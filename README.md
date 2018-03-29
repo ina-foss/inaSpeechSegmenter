@@ -5,17 +5,28 @@ It provides methods for speech music segmentation allowing to split audio signal
 It provides methods for speaker gender segmentation allowing to split speech excerpts into men and women speech.
 
 ## Installation
-Python 3
-tensorflow
+
+inaSpeechSegmenter is a framework in python 3. It can be installed using the following procedure:
+
 
 ```bash
+# clone git repository
+$ git clone https://github.com/ina-foss/inaSpeechSegmenter.git
+# create a python 3 virtual environement and activate it
 $ virtualenv -p python3 inaSpeechSegEnv
 $ source inaSpeechSegEnv/bin/activate
 # install a backend for keras (tensorflow, theano, cntk...)
-$ pip install tensorflow-gpu # for a GPU implementation
+$ pip install tensorflow-gpu # if you wish GPU implementation (recommended)
 $ pip install tensorflow # for a CPU implementation
+# install framework and dependencies
+$ cd inaSpeechSegmenter
 $ python setup.py install
 ```
+
+## Speech Segmentation Program
+
+## Using Speech Segmentation API
+
 
 ## Citing
 
@@ -31,11 +42,6 @@ inaSpeechSegmenter has been presented at the IEEE International Conference on Ac
   booktitle={Acoustics Speech and Signal Processing (ICASSP), 2010 IEEE International Conference on}
 }
 ```
-
-
-In IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), April 2018, Calgary, Canada
-
-
 
 
 ## CREDITS
