@@ -27,6 +27,8 @@ $ python setup.py install
 
 ## Using Speech Segmentation API
 
+InaSpeechSegmentation API is very simple to use!
+See the following notebook for a comprehensive example: [API Tutorial Here!](API_Tutorial.ipynb)
 
 ## Citing
 
