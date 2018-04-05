@@ -49,7 +49,7 @@ CLASSIFIERS=[
     'Topic :: Sociology',
 ]
 
-DESCRIPTION='CNN-based audio segmentation toolkit. Allows to detect speech, music and speaker gender. Has been designed for large scale gender equality studies based on speech time per gender.'
+DESCRIPTION='CNN-based audio segmentation toolkit. Allows to detect speech, music and speaker gender.'
 
 setup(
     name = "inaSpeechSegmenter",
@@ -71,4 +71,5 @@ setup(
     scripts=[os.path.join('scripts', script) for script in \
              ['ina_speech_segmenter.py']],
     classifiers=CLASSIFIERS,
+    python_requires='>=3',
 )
