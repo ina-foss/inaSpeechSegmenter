@@ -31,19 +31,36 @@ from setuptools import setup, find_packages
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-KEYWORDS = 'audio analysis features visualization plot annotation sonicvisualiser conversion format'
+KEYWORDS = 'speech-segmentation audio-analysis speaker-gender-segmentation music-detection speech-music gender-equality gender-classification'
+
+CLASSIFIERS=[
+    'Development Status :: 4 - Beta',
+    'Intended Audience :: Developers',
+    'Intended Audience :: Education',
+    'Intended Audience :: Science/Research',
+    'License :: OSI Approved :: MIT License',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python :: 3',
+    'Topic :: Multimedia :: Sound/Audio',
+    'Topic :: Multimedia :: Sound/Audio :: Analysis',
+    'Topic :: Multimedia :: Sound/Audio :: Speech',
+    'Topic :: Scientific/Engineering',
+    'Topic :: Scientific/Engineering :: Artificial Intelligence',
+    'Topic :: Sociology',
+]
+
+DESCRIPTION='CNN-based audio segmentation toolkit. Allows to detect speech, music and speaker gender. Has been designed for large scale gender equality studies based on speech time per gender.'
 
 setup(
     name = "inaSpeechSegmenter",
     version = "0.0.1",
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
-    description = ("An demonstration of how to create, document, and publish "
-                                   "to the cheese shop a5 pypi.org."),
+    description = DESCRIPTION,
     license = "MIT",
     install_requires=['numpy', 'keras', 'scikit-image', 'sidekit', 'pyannote.algorithms'],
  #   keywords = "example documentation tutorial",
-    url = "http://packages.python.org/an_example_pypi_project",
+    url = "https://github.com/ina-foss/inaSpeechSegmenter",
 #    packages=['inaSpeechSegmenter'],
     keywords = KEYWORDS.split(' '),
     packages = find_packages(),
@@ -53,9 +70,5 @@ setup(
     long_description=read('README.md'),
     scripts=[os.path.join('scripts', script) for script in \
              ['ina_speech_segmenter.py']],
-    classifiers=[
-        "Development Status :: 3 - Alpha",
-        "Topic :: Utilities",
-        "License :: OSI Approved :: BSD License",
-    ],
+    classifiers=CLASSIFIERS,
 )
