@@ -50,4 +50,5 @@ seg = Segmenter()
 
 for i, e in enumerate(input_files):
     print('processing file %d/%d: %s' % (i+1, len(input_files), e))
-    seg2csv(seg(e), odir)
+    base, _ = os.path.splitext(os.path.basename(e))
+    seg2csv(seg(e), '%s/%s.csv' % (odir, base))
