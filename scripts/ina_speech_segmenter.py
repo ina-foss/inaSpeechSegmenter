@@ -26,6 +26,10 @@
 import argparse
 import glob
 import os
+import warnings
+
+# TODO: Allow the selection of a custom ffmpeg binary
+# allow the use a external activity or speech music segmentations
 
 # Configure command line parsing
 parser = argparse.ArgumentParser(description='Do Speech/Music and Male/Female segmentation. Store segmentations into CSV files')
@@ -48,7 +52,10 @@ from inaSpeechSegmenter import Segmenter, seg2csv
 # load neural network into memory, may last few seconds
 seg = Segmenter()
 
-for i, e in enumerate(input_files):
-    print('processing file %d/%d: %s' % (i+1, len(input_files), e))
-    base, _ = os.path.splitext(os.path.basename(e))
-    seg2csv(seg(e), '%s/%s.csv' % (odir, base))
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    
+    for i, e in enumerate(input_files):
+        print('processing file %d/%d: %s' % (i+1, len(input_files), e))
+        base, _ = os.path.splitext(os.path.basename(e))
+        seg2csv(seg(e), '%s/%s.csv' % (odir, base))

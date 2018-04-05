@@ -6,8 +6,19 @@ It provides methods for speaker gender segmentation allowing to split speech exc
 
 ## Installation
 
-inaSpeechSegmenter is a framework in python 3. It can be installed using the following procedure:
+inaSpeechSegmenter is a framework in python 3.
+It can be installed using the following procedure:
 
+### Prerequisites
+
+inaSpeechSegmenter requires ffmpeg for decoding any type of format.
+Installation of ffmpeg for ubuntu can be done using the following commandline
+̀̀̀bash
+$ sudo apt-get install ffmpeg
+```
+
+
+### Installing from from sources
 
 ```bash
 # clone git repository
@@ -23,9 +34,45 @@ $ cd inaSpeechSegmenter
 $ python setup.py install
 ```
 
-## Speech Segmentation Program
+### PIP installation
+TODO: Not Yet managed
+```bash
+# create a python 3 virtual environement and activate it
+$ virtualenv -p python3 inaSpeechSegEnv
+$ source inaSpeechSegEnv/bin/activate
+# install a backend for keras (tensorflow, theano, cntk...)
+$ pip install tensorflow-gpu # if you wish GPU implementation (recommended)
+$ pip install tensorflow # for a CPU implementation
+# install framework and dependencies
+$ pip install inaSpeechSegmenter
+```
 
-## Using Speech Segmentation API
+## Using inaSpeechSegmenter
+
+### Speech Segmentation Program
+Binary program ina_speech_segmenter.py may be used to segment multimedia archives encoded in any format supported by ffmpeg. It requires input media and output csv files corresponding to the segmentation. Corresponding csv may be visualised using softwares such as https://www.sonicvisualiser.org/
+```bash
+# get help
+$ ina_speech_segmenter.py --help
+usage: ina_speech_segmenter.py [-h] -i INPUT [INPUT ...] -o OUTPUT_DIRECTORY
+
+Do Speech/Music and Male/Female segmentation. Store segmentations into CSV
+files
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT [INPUT ...], --input INPUT [INPUT ...]
+                        Input media to analyse. May be a full path to a media
+                        (/home/david/test.mp3), a list of full paths
+                        (/home/david/test.mp3 /tmp/mymedia.avi), or a regex
+                        input pattern ("/home/david/myaudiobooks/*.mp3")
+  -o OUTPUT_DIRECTORY, --output_directory OUTPUT_DIRECTORY
+                        Directory used to store segmentations. Resulting
+                        segmentations have same base name as the corresponding
+                        input media, with csv extension. Ex: mymedia.MPG will
+                        result in mymedia.csv
+```
+### Using Speech Segmentation API
 
 InaSpeechSegmentation API is very simple to use!
 See the following notebook for a comprehensive example: [API Tutorial Here!](API_Tutorial.ipynb)
