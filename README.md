@@ -13,8 +13,7 @@ It can be installed using the following procedure:
 
 inaSpeechSegmenter requires ffmpeg for decoding any type of format.
 Installation of ffmpeg for ubuntu can be done using the following commandline:
-
-̀̀̀bash
+```bash
 $ sudo apt-get install ffmpeg
 ```
 
