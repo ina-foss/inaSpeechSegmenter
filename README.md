@@ -54,7 +54,7 @@ Binary program ina_speech_segmenter.py may be used to segment multimedia archive
 $ ina_speech_segmenter.py --help
 usage: ina_speech_segmenter.py [-h] -i INPUT [INPUT ...] -o OUTPUT_DIRECTORY
 
-Do Speech/Music and Male/Female segmentation. Store segmentations into CSV
+Does Speech/Music and Male/Female segmentation. Stores segmentations into CSV
 files
 
 optional arguments:
@@ -72,7 +72,7 @@ optional arguments:
 ```
 ### Using Speech Segmentation API
 
-InaSpeechSegmentation API is very simple to use!
+InaSpeechSegmentation API is intended to be very simple to use.
 See the following notebook for a comprehensive example: [API Tutorial Here!](API_Tutorial.ipynb)
 
 ## Citing
@@ -86,7 +86,7 @@ inaSpeechSegmenter has been presented at the IEEE International Conference on Ac
   title = {An Open-Source Speaker Gender Detection Framework for Monitoring Gender Equality},
   year = {2018},
   organization={IEEE},
-  booktitle={Acoustics Speech and Signal Processing (ICASSP), 2010 IEEE International Conference on}
+  booktitle={Acoustics Speech and Signal Processing (ICASSP), 2018 IEEE International Conference on}
 }
 ```
 
