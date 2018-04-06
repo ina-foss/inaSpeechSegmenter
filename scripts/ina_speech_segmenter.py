@@ -28,8 +28,10 @@ import glob
 import os
 import warnings
 
-# TODO: Allow the selection of a custom ffmpeg binary
-# allow the use a external activity or speech music segmentations
+# TODO
+# * Allow the selection of a custom ffmpeg binary
+# * allow the use a external activity or speech music segmentations
+# * describe URL management in help and interference with glob
 
 # Configure command line parsing
 parser = argparse.ArgumentParser(description='Do Speech/Music and Male/Female segmentation. Store segmentations into CSV files')

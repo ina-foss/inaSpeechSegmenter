@@ -1,8 +1,15 @@
 # inaSpeechSegmenter
 
-inaSpeechSegmenter is a framework for speech segmentation in Python 3.
-It provides methods for speech music segmentation allowing to split audio signal into homogenous zones of speech and music.
-It provides methods for speaker gender segmentation allowing to split speech excerpts into men and women speech.
+inaSpeechSegmenter is a CNN-based audio segmentation toolkit.
+
+
+It splits audio signals into homogeneous zones of music and speech.
+Speech zones are split into segments tagged using speaker gender (male or female).
+Male and female classification models are optimized for French language since they were trained using French speakers (accoustic correlates of speaker gender are language dependent).
+Zones corresponding to speech over music are tagged as speech.
+
+
+inaSpeechSegmenter has been designed in order to perform large-scale gender equality studies based on men and women speech-time percentage estimation.
 
 ## Installation
 
