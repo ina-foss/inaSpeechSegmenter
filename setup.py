@@ -28,7 +28,17 @@ import os
 from setuptools import setup, find_packages
 
 
-KEYWORDS = 'speech-segmentation audio-analysis speaker-gender-segmentation music-detection speech-music gender-equality gender-classification'
+KEYWORDS = '''
+speech-segmentation
+audio-analysis
+music-detection
+speech-music
+gender-equality
+gender-classification
+speaker-gender
+speech
+music
+voice-activity-detection'''.strip().split('\n')
 
 CLASSIFIERS=[
     'Development Status :: 4 - Beta',
@@ -56,7 +66,7 @@ in 2018 IEEE International Conference on Acoustics Speech and Signal Processing 
 
 setup(
     name = "inaSpeechSegmenter",
-    version = "0.0.2",
+    version = "0.0.3",
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
     description = DESCRIPTION,
@@ -65,7 +75,7 @@ setup(
  #   keywords = "example documentation tutorial",
     url = "https://github.com/ina-foss/inaSpeechSegmenter",
 #    packages=['inaSpeechSegmenter'],
-    keywords = KEYWORDS.split(' '),
+    keywords = KEYWORDS,
     packages = find_packages(),
     package_data = {'inaSpeechSegmenter': ['*.hdf5']},
     include_package_data = True,
