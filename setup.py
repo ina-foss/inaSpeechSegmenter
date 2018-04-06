@@ -79,6 +79,10 @@ setup(
     packages = find_packages(),
     package_data = {'inaSpeechSegmenter': ['*.hdf5']},
     include_package_data = True,
+    data_files = ['LICENSE',
+                  'inaSpeechSegmenter/keras_speech_music_cnn.hdf5',
+                  'inaSpeechSegmenter/keras_male_female_cnn.hdf5',
+                  'API_Tutorial.ipynb'],
     long_description=LONGDESCRIPTION,
     scripts=[os.path.join('scripts', script) for script in \
              ['ina_speech_segmenter.py']],
