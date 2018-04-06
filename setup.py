@@ -1,4 +1,4 @@
-1#!/usr/bin/env python
+#!/usr/bin/env python
 # encoding: utf-8
 
 # The MIT License
@@ -28,9 +28,6 @@ import os
 from setuptools import setup, find_packages
 
 
-def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
-
 KEYWORDS = 'speech-segmentation audio-analysis speaker-gender-segmentation music-detection speech-music gender-equality gender-classification'
 
 CLASSIFIERS=[
@@ -49,11 +46,17 @@ CLASSIFIERS=[
     'Topic :: Sociology',
 ]
 
-DESCRIPTION='CNN-based audio segmentation toolkit. Allows to detect speech, music and speaker gender.'
+DESCRIPTION='CNN-based audio segmentation toolkit. Does voice activity detection, music recognition, speaker gender recognition.'
+LONGDESCRIPTION='''Split audio signal into homogeneous zones of speech and music, and detect speaker gender.
+For further details, see the following publication:
+Doukhan, D., Carrive, J., Vallet, F., Larcher, A., Meignier, S. (2018).
+An Open-Source Speaker Gender Detection Framework for Monitoring Gender Equality.
+in 2018 IEEE International Conference on Acoustics Speech and Signal Processing (ICASSP)
+'''
 
 setup(
     name = "inaSpeechSegmenter",
-    version = "0.0.1",
+    version = "0.0.2",
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
     description = DESCRIPTION,
@@ -66,8 +69,7 @@ setup(
     packages = find_packages(),
     package_data = {'inaSpeechSegmenter': ['*.hdf5']},
     include_package_data = True,
-    
-    long_description=read('README.md'),
+    long_description=LONGDESCRIPTION,
     scripts=[os.path.join('scripts', script) for script in \
              ['ina_speech_segmenter.py']],
     classifiers=CLASSIFIERS,
