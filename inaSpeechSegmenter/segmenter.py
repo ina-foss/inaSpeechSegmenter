@@ -29,6 +29,7 @@ import tempfile
 from subprocess import Popen, PIPE
 import numpy as np
 import keras
+#import threading
 
 from skimage.util import view_as_windows as vaw
 
@@ -41,7 +42,7 @@ from .viterbi_utils import log_trans_exp, pred2logemission
 
 
 def _wav2feats(wavname):
-    """ 
+    """
     """
     ext = os.path.splitext(wavname)[-1]
     assert ext.lower() == '.wav' or ext.lower() == '.wave'
@@ -128,10 +129,10 @@ class Segmenter:
         """
         p = os.path.dirname(os.path.realpath(__file__)) + '/'
         self.sznn = keras.models.load_model(p + 'keras_speech_music_cnn.hdf5')
-        self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5')      
+        self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5')
 
 
-    
+
     def segmentwav(self, wavname):
         """
         do segmentation
@@ -142,13 +143,14 @@ class Segmenter:
         mspec, loge = _wav2feats(wavname)
         # perform energy-based activity detection
         vad = _energy_activity(loge)[::2]
-        
+
         # perform speech/music segmentation using only 21 MFC coefficients
         data21, finite = _get_patches(mspec[:, :21], 68, 2)
         assert len(data21) == len(vad), (len(data21), len(vad))
         assert len(finite) == len(data21), (len(data21), len(finite))
+        # THREAD
         szseg = _speechzic(self.sznn, data21, finite, vad)
-        
+
         data, finite = _get_patches(mspec, 68, 2)
         genderseg = _gender(self.gendernn, data, finite, szseg)
         # TODO: OFFSET MANAGEMENT
@@ -159,25 +161,51 @@ class Segmenter:
         do segmentation on any kind on media file, including urls
         slower than segmentwav method
         """
-        base, _ = os.path.splitext(os.path.basename(medianame))
+        alles = [os.path.splitext(os.path.basename(e)) for e in medianame]
+        base = [alles[i][0] for i in range(len(alles))]
+        # ext = [alles[i][1] for i in range(len(alles))]
 
         with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
-            tmpwav = tmpdirname + '/' + base + '.wav'
-            args = [ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1', tmpwav]
-            p = Popen(args, stdout=PIPE, stderr=PIPE)
-            output, error = p.communicate()
-            assert p.returncode == 0, error
-            return self.segmentwav(tmpwav)
+            tmpwav = ['%s/%s.wav' % (tmpdirname, elem) for elem in base]
+            list_of_data = list()
+            for media_name, tmp_wav in zip(medianame, tmpwav):
+                args = [ffmpeg, '-y', '-i', media_name, '-ar', '16000', '-ac', '1', tmp_wav]
+                p = Popen(args, stdout=PIPE, stderr=PIPE)
+                output, error = p.communicate()
+                assert p.returncode == 0, error
+                list_of_data.append(self.segmentwav(tmp_wav))
+            return list_of_data
 
 def seg2csv(lseg, fout=None):
     if fout is None:
-        for lab, beg, end in lseg:
-            print('%s\t%f\t%f' % (lab, beg, end))
+        for elem in lseg:
+            for lab, beg, end in elem:
+                print('%s\t%f\t%f' % (lab, beg, end))
     else:
-        with open(fout, 'wt') as fid:
-            for lab, beg, end in lseg:
-                fid.write('%s\t%f\t%f\n' % (lab, beg, end))
+        for dest in fout:
+            with open(dest, 'wt') as fid:
+                for elem in lseg:
+                    for lab, beg, end in elem:
+                        fid.write('%s\t%f\t%f\n' % (lab, beg, end))
 
 
-
+def to_parse(input_files):
+    """
+    Return an explicit list of all input files to segment (path and url).
+    Parse .txt file if found, where each line is a file to segment.
+    """
+    if any(file.endswith(".txt") for file in input_files):
+        files = list()
+        for e in input_files:
+            if e.endswith(".txt"):
+                with open(e) as src_fd :
+                    for line in src_fd:
+                        a = line.strip(" \t\n\r").rstrip('/')  # Removing first and last spaces, returns, or slashes.
+                        if len(a) > 0:
+                            files.append(a)
+            else:
+                files.append(e)
+    else:
+        files = list(input_files)
+    return files
 

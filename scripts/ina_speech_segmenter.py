@@ -28,36 +28,50 @@ import glob
 import os
 import warnings
 
-# TODO
+# TODO:
 # * Allow the selection of a custom ffmpeg binary
-# * allow the use a external activity or speech music segmentations
+# * allow to use an external activity or speech music segmentations
 # * describe URL management in help and interference with glob
 
 # Configure command line parsing
 parser = argparse.ArgumentParser(description='Do Speech/Music and Male/Female segmentation. Store segmentations into CSV files')
-parser.add_argument('-i', '--input', nargs='+', help='Input media to analyse. May be a full path to a media (/home/david/test.mp3), a list of full paths (/home/david/test.mp3 /tmp/mymedia.avi), or a regex input pattern ("/home/david/myaudiobooks/*.mp3")', required=True)
+parser.add_argument('-i', '--input', nargs='+', help='Input media to analyse. May be a full path to a media (/home/david/test.mp3), a list of full paths (/home/david/test.mp3 /tmp/mymedia.avi), a regex input pattern ("/home/david/myaudiobooks/*.mp3"), an url with http* protocol (http://url_of_the_file), or a .txt file containing any of the those.', required=True)
 parser.add_argument('-o', '--output_directory', help='Directory used to store segmentations. Resulting segmentations have same base name as the corresponding input media, with csv extension. Ex: mymedia.MPG will result in mymedia.csv', required=True)
+parser.add_argument('-b', '--ffmpeg_binary', help='Your custom binary of ffmpeg', required=False)
 args = parser.parse_args()
 
 # Preprocess arguments and check their consistency
 input_files = []
 for e in args.input:
-    input_files += glob.glob(e)
-assert len(input_files) > 0, 'No existing media selected for analysis! Bad values provided to -i (%s)' % args.input
+    if e.startswith("http"):
+        input_files += [e]
+    else:
+        input_files += glob.glob(e)
+assert len(input_files) > 0, "No existing media selected for analysis! Bad values provided to -i ({})".format(args.input)
 
 odir = args.output_directory
 assert os.access(odir, os.W_OK), 'Directory %s is not writable!' % odir
 
 # Do processings
-from inaSpeechSegmenter import Segmenter, seg2csv
+from inaSpeechSegmenter import Segmenter, seg2csv, to_parse
 
 # load neural network into memory, may last few seconds
 seg = Segmenter()
 
+# case of a file of files
+files = to_parse(input_files)
+
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    
-    for i, e in enumerate(input_files):
-        print('processing file %d/%d: %s' % (i+1, len(input_files), e))
-        base, _ = os.path.splitext(os.path.basename(e))
-        seg2csv(seg(e), '%s/%s.csv' % (odir, base))
+    #print('processing file %d/%d: %s' % (i+1, len(input_files), e))
+    base = [os.path.splitext(os.path.basename(e)) for e in files]
+    base = [base[i][0] for i in range(len(base))]
+    if len(odir) > 0:
+        fout = ['%s/%s.csv' % (odir, elem) for elem in base]
+    seg2csv(seg(files), fout)
+
+
+
+
+
+
