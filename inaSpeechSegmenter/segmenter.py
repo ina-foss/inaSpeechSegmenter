@@ -132,6 +132,12 @@ class Segmenter:
         self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5')
 
 
+    def recsegmentwav(self, wavname):
+        if len(wavname) == 1:
+            return  list([self.segmentwav(wavname[0])])
+        else:
+            return self.recsegmentwav(wavname[0:1]) + self.recsegmentwav(wavname[1:])
+
 
     def segmentwav(self, wavname):
         """
@@ -167,14 +173,12 @@ class Segmenter:
 
         with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
             tmpwav = ['%s/%s.wav' % (tmpdirname, elem) for elem in base]
-            list_of_data = list()
             for media_name, tmp_wav in zip(medianame, tmpwav):
                 args = [ffmpeg, '-y', '-i', media_name, '-ar', '16000', '-ac', '1', tmp_wav]
                 p = Popen(args, stdout=PIPE, stderr=PIPE)
                 output, error = p.communicate()
                 assert p.returncode == 0, error
-                list_of_data.append(self.segmentwav(tmp_wav))
-            return list_of_data
+            return self.recsegmentwav(tmpwav)
 
 def seg2csv(lseg, fout=None):
     if fout is None:
