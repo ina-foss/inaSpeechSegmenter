@@ -208,7 +208,6 @@ class Segmenter:
                 cpu_thread = self._thread(target=self._CPU_Thread, args=(ffmpeg, media_name, tmp_wav, hasrf))
                 cpu_thread.start(), gpu_thread.start()
                 returns_from_gpu, returns_from_cpu = gpu_thread.join(), cpu_thread.join()
-                print("cpu : ", returns_from_cpu, "gpu : ", returns_from_gpu)
                 list_of_data.append(returns_from_gpu)
             data, data21, finite, vad = returns_from_cpu
             #print("data", np.shape(np.array(data)), "data21", np.shape(np.array(data21)), "finite", np.shape(np.array(finite)), "vad", np.shape(np.array(vad)))
