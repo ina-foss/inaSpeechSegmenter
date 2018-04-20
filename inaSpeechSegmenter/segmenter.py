@@ -29,7 +29,8 @@ import tempfile
 from subprocess import Popen, PIPE
 import numpy as np
 import keras
-#import threading
+from keras import backend as KB
+from threading import Thread
 
 from skimage.util import view_as_windows as vaw
 
@@ -130,36 +131,65 @@ class Segmenter:
         p = os.path.dirname(os.path.realpath(__file__)) + '/'
         self.sznn = keras.models.load_model(p + 'keras_speech_music_cnn.hdf5')
         self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5')
+        self.graph = KB.get_session().graph      # To prevent the issue of keras with tensorflow backend for async tasks
 
 
-
-    def segmentwav(self, wavname):
+    class _thread(Thread):
         """
-        do segmentation
-        require input corresponding to wav file sampled at 16000Hz
-        with a single channel
+        Allow us to get the results from the threads
         """
+        def __init__(self, *args, **kwargs):
+            Thread.__init__(self, *args, **kwargs)
+            self._return = None
+
+        def run(self):
+            if self._target is not None:
+                self._return = self._target(*self._args, **self._kwargs)
+
+        def join(self):
+            Thread.join(self)
+            return self._return
+
+
+    def _CPU_Thread(self, ffmpeg, wavname, tmpwav, hasrf):
+        """
+        Compute cpu-optimized tasks for segmentation in a separate thread
+        """
+        if not hasrf:
+            args = [ffmpeg, '-y', '-i', wavname, '-ar', '16000', '-ac', '1', tmpwav]
+            p = Popen(args, stdout=PIPE, stderr=PIPE)
+            output, error = p.communicate()
+            assert p.returncode == 0, error
+
         # Get Mel Power Spectrogram and Energy
         mspec, loge = _wav2feats(wavname)
         # perform energy-based activity detection
         vad = _energy_activity(loge)[::2]
 
-        # perform speech/music segmentation using only 21 MFC coefficients
         data21, finite = _get_patches(mspec[:, :21], 68, 2)
         assert len(data21) == len(vad), (len(data21), len(vad))
         assert len(finite) == len(data21), (len(data21), len(finite))
-        # THREAD
-        szseg = _speechzic(self.sznn, data21, finite, vad)
+        data, _ = _get_patches(mspec, 68, 2)
+        return data, data21, finite, vad
 
-        data, finite = _get_patches(mspec, 68, 2)
-        genderseg = _gender(self.gendernn, data, finite, szseg)
-        # TODO: OFFSET MANAGEMENT
-        return [(lab, start * .02, stop * .02) for lab, start, stop in genderseg]
 
-    def __call__(self, medianame, ffmpeg='ffmpeg', tmpdir=None):
+    def _GPU_Thread(self, data, data21, finite, vad):
         """
-        do segmentation on any kind on media file, including urls
-        slower than segmentwav method
+        Compute gpu-optimized tasks for segmentation in a separate thread
+        """
+        with self.graph.as_default():  # To prevent the issue of keras with tensorflow backend for async tasks
+            # perform speech/music segmentation using only 21 MFC coefficients
+            szseg = _speechzic(self.sznn, data21, finite, vad)
+
+            genderseg = _gender(self.gendernn, data, finite, szseg)
+            return [(lab, start * .02, stop * .02) for lab, start, stop in genderseg]
+
+
+    def segmentwav(self, medianame, ffmpeg='ffmpeg', tmpdir=None, hasrf=False): # hasrf : has the right format. # TODO: Allow a boolean matrix
+        """
+        do segmentation on any kind on media file, including urls. medianame must be a list.
+        Quicker if input corresponding to wav file(s) sampled at 16000Hz
+        with a single channel. If so, hasrf must be set to True.
         """
         alles = [os.path.splitext(os.path.basename(e)) for e in medianame]
         base = [alles[i][0] for i in range(len(alles))]
@@ -168,13 +198,36 @@ class Segmenter:
         with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
             tmpwav = ['%s/%s.wav' % (tmpdirname, elem) for elem in base]
             list_of_data = list()
-            for media_name, tmp_wav in zip(medianame, tmpwav):
-                args = [ffmpeg, '-y', '-i', media_name, '-ar', '16000', '-ac', '1', tmp_wav]
-                p = Popen(args, stdout=PIPE, stderr=PIPE)
-                output, error = p.communicate()
-                assert p.returncode == 0, error
-                list_of_data.append(self.segmentwav(tmp_wav))
+            returns_from_cpu, returns_from_gpu = None, None
+            cpu_thread = self._thread(target=self._CPU_Thread, args=(ffmpeg, medianame[0], tmpwav[0], hasrf))
+            cpu_thread.start()
+            returns_from_cpu = cpu_thread.join()
+            for media_name, tmp_wav in zip(medianame[1:-1], tmpwav[1:-1]):
+                data, data21, finite, vad = returns_from_cpu
+                gpu_thread = self._thread(target=self._GPU_Thread, args=(data, data21, finite, vad))
+                cpu_thread = self._thread(target=self._CPU_Thread, args=(ffmpeg, media_name, tmp_wav, hasrf))
+                cpu_thread.start(), gpu_thread.start()
+                returns_from_gpu, returns_from_cpu = gpu_thread.join(), cpu_thread.join()
+                print("cpu : ", returns_from_cpu, "gpu : ", returns_from_gpu)
+                list_of_data.append(returns_from_gpu)
+            data, data21, finite, vad = returns_from_cpu
+            #print("data", np.shape(np.array(data)), "data21", np.shape(np.array(data21)), "finite", np.shape(np.array(finite)), "vad", np.shape(np.array(vad)))
+            gpu_thread = self._thread(target=self._GPU_Thread, args=(data, data21, finite, vad))
+            gpu_thread.start()
+            returns_from_gpu = gpu_thread.join()
+            list_of_data.append(returns_from_gpu)
             return list_of_data
+
+
+    def __call__(self, medianame, ffmpeg='ffmpeg', tmpdir=None, hasrf=False):
+        """
+        do segmentation on any kind on media file, including urls
+        """
+        return self.segmentwav(medianame, ffmpeg, tmpdir, hasrf)
+
+
+
+
 
 def seg2csv(lseg, fout=None):
     if fout is None:
