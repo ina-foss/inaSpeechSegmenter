@@ -132,35 +132,48 @@ class Segmenter:
         self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5')
 
 
-    def recsegmentwav(self, wavname):
-        if len(wavname) == 1:
-            return  list([self.segmentwav(wavname[0])])
+    def segmentwav(self, wav_name):
+        if len(wav_name) == 1:
+            wavname = wav_name[0]
+            """
+            do segmentation
+            require input corresponding to wav file sampled at 16000Hz
+            with a single channel. wavname must be a list with at least 1 item.
+            """
+            # Get Mel Power Spectrogram and Energy
+            mspec, loge = _wav2feats(wavname)
+            # perform energy-based activity detection
+            vad = _energy_activity(loge)[::2]
+
+            # perform speech/music segmentation using only 21 MFC coefficients
+            data21, finite = _get_patches(mspec[:, :21], 68, 2)
+            assert len(data21) == len(vad), (len(data21), len(vad))
+            assert len(finite) == len(data21), (len(data21), len(finite))
+            # THREAD
+            szseg = _speechzic(self.sznn, data21, finite, vad)
+
+            data, finite = _get_patches(mspec, 68, 2)
+            genderseg = _gender(self.gendernn, data, finite, szseg)
+            # TODO: OFFSET MANAGEMENT
+            return [[(lab, start * .02, stop * .02) for lab, start, stop in genderseg]]
         else:
-            return self.recsegmentwav(wavname[0:1]) + self.recsegmentwav(wavname[1:])
+            return self.segmentwav(wav_name[0:1]) + self.segmentwav(wav_name[1:])
 
 
-    def segmentwav(self, wavname):
+    def convert(self, medianame, tmpwav, ffmpeg):
         """
-        do segmentation
-        require input corresponding to wav file sampled at 16000Hz
-        with a single channel
+        convert any media or list of media to wav 16K mono.
+        medianame, tmpwav must be lists
         """
-        # Get Mel Power Spectrogram and Energy
-        mspec, loge = _wav2feats(wavname)
-        # perform energy-based activity detection
-        vad = _energy_activity(loge)[::2]
+        if len(tmpwav) == 1:
+            args = [ffmpeg, '-y', '-i', medianame[0], '-ar', '16000', '-ac', '1', tmpwav[0]]
+            p = Popen(args, stdout=PIPE, stderr=PIPE)
+            output, error = p.communicate()
+            assert p.returncode == 0, error
+        else:
+            self.convert(medianame[1:], tmpwav[1:], ffmpeg)
+            self.convert(medianame[0:1], tmpwav[0:1], ffmpeg)
 
-        # perform speech/music segmentation using only 21 MFC coefficients
-        data21, finite = _get_patches(mspec[:, :21], 68, 2)
-        assert len(data21) == len(vad), (len(data21), len(vad))
-        assert len(finite) == len(data21), (len(data21), len(finite))
-        # THREAD
-        szseg = _speechzic(self.sznn, data21, finite, vad)
-
-        data, finite = _get_patches(mspec, 68, 2)
-        genderseg = _gender(self.gendernn, data, finite, szseg)
-        # TODO: OFFSET MANAGEMENT
-        return [(lab, start * .02, stop * .02) for lab, start, stop in genderseg]
 
     def __call__(self, medianame, ffmpeg='ffmpeg', tmpdir=None):
         """
@@ -173,12 +186,9 @@ class Segmenter:
 
         with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
             tmpwav = ['%s/%s.wav' % (tmpdirname, elem) for elem in base]
-            for media_name, tmp_wav in zip(medianame, tmpwav):
-                args = [ffmpeg, '-y', '-i', media_name, '-ar', '16000', '-ac', '1', tmp_wav]
-                p = Popen(args, stdout=PIPE, stderr=PIPE)
-                output, error = p.communicate()
-                assert p.returncode == 0, error
-            return self.recsegmentwav(tmpwav)
+            self.convert(medianame, tmpwav, ffmpeg)
+            return self.segmentwav(tmpwav)
+
 
 def seg2csv(lseg, fout=None):
     if fout is None:
