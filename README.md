@@ -33,6 +33,7 @@ $ source inaSpeechSegEnv/bin/activate
 $ pip install tensorflow-gpu # if you wish GPU implementation (recommended if your host has a GPU)
 $ pip install tensorflow # for a CPU implementation
 # install framework and dependencies
+$ pip install pyannote.algorithms scikit-image sidekit keras
 $ pip install inaSpeechSegmenter
 ```
 
@@ -48,6 +49,7 @@ $ source inaSpeechSegEnv/bin/activate
 $ pip install tensorflow-gpu # if you wish GPU implementation (recommended)
 $ pip install tensorflow # for a CPU implementation
 # install framework and dependencies
+$ pip install pyannote.algorithms scikit-image sidekit keras
 $ cd inaSpeechSegmenter
 $ python setup.py install
 ```
