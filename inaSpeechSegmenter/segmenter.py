@@ -30,7 +30,7 @@ from subprocess import Popen, PIPE
 import numpy as np
 import keras
 from keras import backend as KB
-from threading import Thread
+from .thread_returning import ThreadReturning
 
 from skimage.util import view_as_windows as vaw
 
@@ -40,6 +40,9 @@ from sidekit.frontend.features import mfcc
 
 from pyannote.algorithms.utils.viterbi import viterbi_decoding
 from .viterbi_utils import log_trans_exp, pred2logemission
+
+
+graph = KB.get_session().graph      # To prevent the issue of keras with tensorflow backend for async tasks
 
 
 def _wav2feats(wavname):
@@ -122,6 +125,43 @@ def _binidx2seglist(binidx):
     return ret
 
 
+def audio2features(ffmpeg, wavname, tmpwav, hasrf):
+    """
+    Convert wavname to computable feature for audio segmentation. hasrf is a boolean,
+    set it to true if the file has the right format, i.e. WAVE 16K mono, else to false.
+    """
+    if not hasrf:
+        # Convert the file to Wav 16K mono format
+        args = [ffmpeg, '-y', '-i', wavname, '-ar', '16000', '-ac', '1', tmpwav]
+        p = Popen(args, stdout=PIPE, stderr=PIPE)
+        output, error = p.communicate()
+        assert p.returncode == 0, error
+
+    # Get Mel Power Spectrogram and Energy
+    mspec, loge = _wav2feats(wavname)
+    # perform energy-based activity detection
+    vad = _energy_activity(loge)[::2]
+
+    data21, finite = _get_patches(mspec[:, :21], 68, 2)
+    assert len(data21) == len(vad), (len(data21), len(vad))
+    assert len(finite) == len(data21), (len(data21), len(finite))
+    data, _ = _get_patches(mspec, 68, 2)
+    return data, data21, finite, vad
+
+
+def inference(sznn, gendernn, data, data21, finite, vad):
+    """
+    Make inference and produce segmentation informations based on
+    the sznn music recognition network and gendernn gender recognition network.
+    """
+    global graph
+    with graph.as_default():  # To prevent the issue of keras with tensorflow backend for async tasks
+        # perform speech/music segmentation using only 21 MFC coefficients
+        szseg = _speechzic(sznn, data21, finite, vad)
+        genderseg = _gender(gendernn, data, finite, szseg)
+        return [(lab, start * .02, stop * .02) for lab, start, stop in genderseg]
+
+
 
 class Segmenter:
     def __init__(self):
@@ -131,67 +171,16 @@ class Segmenter:
         p = os.path.dirname(os.path.realpath(__file__)) + '/'
         self.sznn = keras.models.load_model(p + 'keras_speech_music_cnn.hdf5')
         self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5')
-        self.graph = KB.get_session().graph      # To prevent the issue of keras with tensorflow backend for async tasks
+        self.i = 0
 
 
-    class _thread(Thread):
-        """
-        Allow us to get the results from the threads
-        """
-        def __init__(self, *args, **kwargs):
-            Thread.__init__(self, *args, **kwargs)
-            self._return = None
-
-        def run(self):
-            if self._target is not None:
-                self._return = self._target(*self._args, **self._kwargs)
-
-        def join(self):
-            Thread.join(self)
-            return self._return
-
-
-    def _CPU_Thread(self, ffmpeg, wavname, tmpwav, hasrf):
-        """
-        Compute cpu-optimized tasks for segmentation in a separate thread
-        """
-        if not hasrf:
-            args = [ffmpeg, '-y', '-i', wavname, '-ar', '16000', '-ac', '1', tmpwav]
-            p = Popen(args, stdout=PIPE, stderr=PIPE)
-            output, error = p.communicate()
-            assert p.returncode == 0, error
-
-        # Get Mel Power Spectrogram and Energy
-        mspec, loge = _wav2feats(wavname)
-        # perform energy-based activity detection
-        vad = _energy_activity(loge)[::2]
-
-        data21, finite = _get_patches(mspec[:, :21], 68, 2)
-        assert len(data21) == len(vad), (len(data21), len(vad))
-        assert len(finite) == len(data21), (len(data21), len(finite))
-        data, _ = _get_patches(mspec, 68, 2)
-        return data, data21, finite, vad
-
-
-    def _GPU_Thread(self, data, data21, finite, vad):
-        """
-        Compute gpu-optimized tasks for segmentation in a separate thread
-        """
-        with self.graph.as_default():  # To prevent the issue of keras with tensorflow backend for async tasks
-            # perform speech/music segmentation using only 21 MFC coefficients
-            szseg = _speechzic(self.sznn, data21, finite, vad)
-
-            genderseg = _gender(self.gendernn, data, finite, szseg)
-            return [(lab, start * .02, stop * .02) for lab, start, stop in genderseg]
-
-
-    def segmentwav(self, medianame, ffmpeg='ffmpeg', tmpdir=None, hasrf=False): # hasrf : has the right format. # TODO: Allow a boolean matrix
+    def segmentwav(self, mediaList, ffmpeg='ffmpeg', tmpdir=None, hasrf=False): # hasrf -> has the right format. # TODO: Allow a boolean matrix
         """
         do segmentation on any kind on media file, including urls. medianame must be a list.
         Quicker if input corresponding to wav file(s) sampled at 16000Hz
         with a single channel. If so, hasrf must be set to True.
         """
-        alles = [os.path.splitext(os.path.basename(e)) for e in medianame]
+        alles = [os.path.splitext(os.path.basename(e)) for e in mediaList]
         base = [alles[i][0] for i in range(len(alles))]
         # ext = [alles[i][1] for i in range(len(alles))]
 
@@ -199,46 +188,55 @@ class Segmenter:
             tmpwav = ['%s/%s.wav' % (tmpdirname, elem) for elem in base]
             list_of_data = list()
             returns_from_cpu, returns_from_gpu = None, None
-            cpu_thread = self._thread(target=self._CPU_Thread, args=(ffmpeg, medianame[0], tmpwav[0], hasrf))
+            # We run the first CPU task
+            cpu_thread = ThreadReturning(target=audio2features, args=(ffmpeg, mediaList[0], tmpwav[0], hasrf))
             cpu_thread.start()
             returns_from_cpu = cpu_thread.join()
-            for media_name, tmp_wav in zip(medianame[1:-1], tmpwav[1:-1]):
+            for media_name, tmp_wav in zip(mediaList[1:], tmpwav[1:]):
                 data, data21, finite, vad = returns_from_cpu
-                gpu_thread = self._thread(target=self._GPU_Thread, args=(data, data21, finite, vad))
-                cpu_thread = self._thread(target=self._CPU_Thread, args=(ffmpeg, media_name, tmp_wav, hasrf))
+                # While running the n th GPU task, we run the n+1 th CPU task
+                gpu_thread = ThreadReturning(target=inference, args=(self.sznn, self.gendernn, data, data21, finite, vad))
+                cpu_thread = ThreadReturning(target=audio2features, args=(ffmpeg, media_name, tmp_wav, hasrf))
                 cpu_thread.start(), gpu_thread.start()
                 returns_from_gpu, returns_from_cpu = gpu_thread.join(), cpu_thread.join()
+                # Storing in .csv file or printed (if asked)
+                self.seg2csv(returns_from_gpu)
                 list_of_data.append(returns_from_gpu)
+            # Then running the last GPU task
             data, data21, finite, vad = returns_from_cpu
-            #print("data", np.shape(np.array(data)), "data21", np.shape(np.array(data21)), "finite", np.shape(np.array(finite)), "vad", np.shape(np.array(vad)))
-            gpu_thread = self._thread(target=self._GPU_Thread, args=(data, data21, finite, vad))
+            gpu_thread = ThreadReturning(target=inference, args=(self.sznn, self.gendernn, data, data21, finite, vad))
             gpu_thread.start()
             returns_from_gpu = gpu_thread.join()
             list_of_data.append(returns_from_gpu)
+            self.seg2csv(returns_from_gpu)
+            KB.clear_session()  # End Keras issues
             return list_of_data
 
 
-    def __call__(self, medianame, ffmpeg='ffmpeg', tmpdir=None, hasrf=False):
+    def seg2csv(self, seg):
+        print("Processing file n°{} ...".format(self.i))
+        if self.fout is None:
+            for lab, beg, end in seg:
+                print('%s\t%f\t%f' % (lab, beg, end))
+        else:
+            with open(self.fout[self.i], 'wt') as fid:
+                for lab, beg, end in seg:
+                    fid.write('%s\t%f\t%f\n' % (lab, beg, end))
+            self.i += 1
+        print("... done.")
+
+
+    def __call__(self, medianame, ffmpeg='ffmpeg', tmpdir=None, hasrf=False, fout=None):
         """
         do segmentation on any kind on media file, including urls
         """
-        return self.segmentwav(medianame, ffmpeg, tmpdir, hasrf)
+        self.fout = fout
+        self.segmentwav(medianame, ffmpeg, tmpdir, hasrf)
+        print("Segmentation done.")
 
 
 
 
-
-def seg2csv(lseg, fout=None):
-    if fout is None:
-        for elem in lseg:
-            for lab, beg, end in elem:
-                print('%s\t%f\t%f' % (lab, beg, end))
-    else:
-        for dest in fout:
-            with open(dest, 'wt') as fid:
-                for elem in lseg:
-                    for lab, beg, end in elem:
-                        fid.write('%s\t%f\t%f\n' % (lab, beg, end))
 
 
 def to_parse(input_files):
