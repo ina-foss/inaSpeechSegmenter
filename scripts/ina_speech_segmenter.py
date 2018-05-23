@@ -53,7 +53,7 @@ odir = args.output_directory
 assert os.access(odir, os.W_OK), 'Directory %s is not writable!' % odir
 
 # Do processings
-from inaSpeechSegmenter import Segmenter, seg2csv, to_parse
+from inaSpeechSegmenter import Segmenter, to_parse
 
 # load neural network into memory, may last few seconds
 seg = Segmenter()
@@ -68,7 +68,7 @@ with warnings.catch_warnings():
     base = [base[i][0] for i in range(len(base))]
     if len(odir) > 0:
         fout = ['%s/%s.csv' % (odir, elem) for elem in base]
-    seg2csv(seg(files), fout)
+    seg(files, fout=fout)
 
 
 
