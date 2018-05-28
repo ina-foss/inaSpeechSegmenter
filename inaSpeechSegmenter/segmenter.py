@@ -171,19 +171,18 @@ class Segmenter:
         p = os.path.dirname(os.path.realpath(__file__)) + '/'
         self.sznn = keras.models.load_model(p + 'keras_speech_music_cnn.hdf5')
         self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5')
-        self.i = 0
 
 
-    def segmentwav(self, mediaList, ffmpeg='ffmpeg', tmpdir=None, hasrf=False): # hasrf -> has the right format. # TODO: Allow a boolean matrix
+    def segmentwav(self, mediaList, ffmpeg='ffmpeg', tmpdir=None, hasrf=False, returns=True, fout=None): # hasrf -> has the right format. # TODO: Allow a boolean matrix
         """
-        do segmentation on any kind on media file, including urls. medianame must be a list.
+        do segmentation on any kind on media file, including urls. mediaList must be a list.
         Quicker if input corresponding to wav file(s) sampled at 16000Hz
         with a single channel. If so, hasrf must be set to True.
         """
         alles = [os.path.splitext(os.path.basename(e)) for e in mediaList]
         base = [alles[i][0] for i in range(len(alles))]
         # ext = [alles[i][1] for i in range(len(alles))]
-
+        i = 0
         with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
             tmpwav = ['%s/%s.wav' % (tmpdirname, elem) for elem in base]
             list_of_data = list()
@@ -200,43 +199,59 @@ class Segmenter:
                 cpu_thread.start(), gpu_thread.start()
                 returns_from_gpu, returns_from_cpu = gpu_thread.join(), cpu_thread.join()
                 # Storing in .csv file or printed (if asked)
-                self.seg2csv(returns_from_gpu)
-                list_of_data.append(returns_from_gpu)
+                if not returns :
+                    seg2csv(returns_from_gpu, fout[i])
+                else:
+                    list_of_data.append(returns_from_gpu)
+                i+=1
             # Then running the last GPU task
             data, data21, finite, vad = returns_from_cpu
             gpu_thread = ThreadReturning(target=inference, args=(self.sznn, self.gendernn, data, data21, finite, vad))
             gpu_thread.start()
             returns_from_gpu = gpu_thread.join()
-            list_of_data.append(returns_from_gpu)
-            self.seg2csv(returns_from_gpu)
+            if not returns :
+                seg2csv(returns_from_gpu, fout[i])
+            else:
+                list_of_data.append(returns_from_gpu)
             KB.clear_session()  # End Keras issues
+            print("Segmentation done. {} file(s) treated.".format(i+1))
             return list_of_data
 
-
-    def seg2csv(self, seg):
-        print("Processing file n°{} ...".format(self.i))
-        if self.fout is None:
-            for lab, beg, end in seg:
-                print('%s\t%f\t%f' % (lab, beg, end))
+    #returns=False
+    def __call__(self, medianame, ffmpeg="ffmpeg", tmpdir=None, hasrf=False, returns=True, fout=None):
+        """
+        do segmentation on any kind on media file, including urls.
+        """
+        if isinstance(medianame, str):
+            medianame = list([medianame])
+        if fout is None:
+            fout = [None for i in range(len(medianame))]
+        ret = self.segmentwav(medianame, ffmpeg, tmpdir, hasrf, returns, fout)
+        if returns:
+            return ret
         else:
-            with open(self.fout[self.i], 'wt') as fid:
-                for lab, beg, end in seg:
+            return None
+
+
+def seg2csv(seg, fout=None):
+    """
+    Write to stdout (or fout if specified) the segmented file(s) lseg.
+    If lseg a list and fout is specified, they must be the same length.
+    """
+    if seg is None:
+        return
+    if fout is None:
+        for i,elem in enumerate(seg):
+            print("file n= {}".format(i))
+            for lab, beg, end in elem:
+                print('%s\t%f\t%f' % (lab, beg, end))
+    else:
+        if isinstance(fout, str):
+            fout = list([fout])
+        for dest,elem in zip(fout, seg):
+            with open(dest, 'wt') as fid:
+                for lab, beg, end in elem:
                     fid.write('%s\t%f\t%f\n' % (lab, beg, end))
-            self.i += 1
-        print("... done.")
-
-
-    def __call__(self, medianame, ffmpeg='ffmpeg', tmpdir=None, hasrf=False, fout=None):
-        """
-        do segmentation on any kind on media file, including urls
-        """
-        self.fout = fout
-        self.segmentwav(medianame, ffmpeg, tmpdir, hasrf)
-        print("Segmentation done.")
-
-
-
-
 
 
 def to_parse(input_files):
