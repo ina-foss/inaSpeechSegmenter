@@ -49,11 +49,11 @@ for e in args.input:
         input_files += glob.glob(e)
 assert len(input_files) > 0, "No existing media selected for analysis! Bad values provided to -i ({})".format(args.input)
 
-odir = args.output_directory
+odir = args.output_directory.strip(" \t\n\r").rstrip('/')
 assert os.access(odir, os.W_OK), 'Directory %s is not writable!' % odir
 
 # Do processings
-from inaSpeechSegmenter import Segmenter, to_parse
+from inaSpeechSegmenter import Segmenter, seg2csv, to_parse
 
 # load neural network into memory, may last few seconds
 seg = Segmenter()
@@ -68,8 +68,7 @@ with warnings.catch_warnings():
     base = [base[i][0] for i in range(len(base))]
     if len(odir) > 0:
         fout = ['%s/%s.csv' % (odir, elem) for elem in base]
-    seg(files, fout=fout)
-
+    seg2csv(seg(files), fout)
 
 
 
