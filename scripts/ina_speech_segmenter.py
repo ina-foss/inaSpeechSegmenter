@@ -38,6 +38,7 @@ parser = argparse.ArgumentParser(description='Do Speech/Music and Male/Female se
 parser.add_argument('-i', '--input', nargs='+', help='Input media to analyse. May be a full path to a media (/home/david/test.mp3), a list of full paths (/home/david/test.mp3 /tmp/mymedia.avi), a regex input pattern ("/home/david/myaudiobooks/*.mp3"), an url with http* protocol (http://url_of_the_file), or a .txt file containing any of the those.', required=True)
 parser.add_argument('-o', '--output_directory', help='Directory used to store segmentations. Resulting segmentations have same base name as the corresponding input media, with csv extension. Ex: mymedia.MPG will result in mymedia.csv', required=True)
 parser.add_argument('-b', '--ffmpeg_binary', help='Your custom binary of ffmpeg', required=False)
+parser.add_argument('-v', '--no_verbose', action="store_false", help='To silent verbosity', required=False)
 args = parser.parse_args()
 
 # Preprocess arguments and check their consistency
@@ -68,7 +69,7 @@ with warnings.catch_warnings():
     base = [base[i][0] for i in range(len(base))]
     if len(odir) > 0:
         fout = ['%s/%s.csv' % (odir, elem) for elem in base]
-    seg2csv(seg(files), fout)
+    seg2csv(seg(files, verbose=args.no_verbose), fout)
 
 
 
