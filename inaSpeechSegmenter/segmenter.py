@@ -138,7 +138,7 @@ def audio2features(ffmpeg, wavname, tmpwav, hasrf):
         assert p.returncode == 0, error
 
     # Get Mel Power Spectrogram and Energy
-    mspec, loge = _wav2feats(wavname)
+    mspec, loge = _wav2feats(tmpwav)
     # perform energy-based activity detection
     vad = _energy_activity(loge)[::2]
 
@@ -173,7 +173,7 @@ class Segmenter:
         self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5')
 
 
-    def segmentwav(self, mediaList, ffmpeg='ffmpeg', tmpdir=None, hasrf=False, returns=True, fout=None): # hasrf -> has the right format. # TODO: Allow a boolean matrix
+    def segmentwav(self, mediaList, ffmpeg='ffmpeg', tmpdir=None, hasrf=False, returns=True, fout=None, verbose=True): # hasrf -> has the right format. # TODO: Allow a boolean matrix
         """
         do segmentation on any kind on media file, including urls. mediaList must be a list.
         Quicker if input corresponding to wav file(s) sampled at 16000Hz
@@ -183,6 +183,7 @@ class Segmenter:
         base = [alles[i][0] for i in range(len(alles))]
         # ext = [alles[i][1] for i in range(len(alles))]
         i = 0
+        s = len(mediaList)
         with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
             tmpwav = ['%s/%s.wav' % (tmpdirname, elem) for elem in base]
             list_of_data = list()
@@ -191,7 +192,7 @@ class Segmenter:
             cpu_thread = ThreadReturning(target=audio2features, args=(ffmpeg, mediaList[0], tmpwav[0], hasrf))
             cpu_thread.start()
             returns_from_cpu = cpu_thread.join()
-            for media_name, tmp_wav in zip(mediaList[1:], tmpwav[1:]):
+            for per, (media_name, tmp_wav) in enumerate(zip(mediaList[1:], tmpwav[1:]), start=1):
                 data, data21, finite, vad = returns_from_cpu
                 # While running the n th GPU task, we run the n+1 th CPU task
                 gpu_thread = ThreadReturning(target=inference, args=(self.sznn, self.gendernn, data, data21, finite, vad))
@@ -201,8 +202,12 @@ class Segmenter:
                 # Storing in .csv file or printed (if asked)
                 if not returns :
                     seg2csv(returns_from_gpu, fout[i])
+                    if verbose:
+                        print("--- file {}/{} saved ---".format(i+1, s))
                 else:
                     list_of_data.append(returns_from_gpu)
+                    if verbose:
+                        print("--- file {}/{} treated ---".format(i+1, s))
                 i+=1
             # Then running the last GPU task
             data, data21, finite, vad = returns_from_cpu
@@ -211,14 +216,19 @@ class Segmenter:
             returns_from_gpu = gpu_thread.join()
             if not returns :
                 seg2csv(returns_from_gpu, fout[i])
+                if verbose:
+                    print("--- file {}/{} saved ---".format(i+1, s))
             else:
                 list_of_data.append(returns_from_gpu)
+                if verbose:
+                   print("--- file {}/{} treated ---".format(i+1, s))
             KB.clear_session()  # End Keras issues
-            print("Segmentation done. {} file(s) treated.".format(i+1))
+            if verbose:
+                print("Segmentation done. {} file(s) treated.".format(i+1))
             return list_of_data
 
-    #returns=False
-    def __call__(self, medianame, ffmpeg="ffmpeg", tmpdir=None, hasrf=False, returns=True, fout=None):
+
+    def __call__(self, medianame, ffmpeg="ffmpeg", tmpdir=None, hasrf=False, returns=True, fout=None, verbose=True):
         """
         do segmentation on any kind on media file, including urls.
         """
@@ -226,7 +236,7 @@ class Segmenter:
             medianame = list([medianame])
         if fout is None:
             fout = [None for i in range(len(medianame))]
-        ret = self.segmentwav(medianame, ffmpeg, tmpdir, hasrf, returns, fout)
+        ret = self.segmentwav(medianame, ffmpeg, tmpdir, hasrf, returns, fout, verbose)
         if returns:
             return ret
         else:
@@ -252,6 +262,7 @@ def seg2csv(seg, fout=None):
             with open(dest, 'wt') as fid:
                 for lab, beg, end in elem:
                     fid.write('%s\t%f\t%f\n' % (lab, beg, end))
+        print("File(s) successfuly saved")
 
 
 def to_parse(input_files):
