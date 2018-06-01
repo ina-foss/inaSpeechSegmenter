@@ -41,6 +41,9 @@ from sidekit.frontend.features import mfcc
 from pyannote.algorithms.utils.viterbi import viterbi_decoding
 from .viterbi_utils import log_trans_exp, pred2logemission
 
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning)
+
 
 graph = KB.get_session().graph      # To prevent the issue of keras with tensorflow backend for async tasks
 
@@ -173,12 +176,13 @@ class Segmenter:
         self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5')
 
 
-    def segmentwav(self, mediaList, ffmpeg='ffmpeg', tmpdir=None, hasrf=False, returns=True, fout=None, verbose=True): # hasrf -> has the right format. # TODO: Allow a boolean matrix
+    def segmentwav(self, mediaList, ffmpeg='ffmpeg', tmpdir=None, hasrf=False, returns=False, fout=None, verbose=True): # hasrf -> has the right format. # TODO: Allow a boolean matrix
         """
         do segmentation on any kind on media file, including urls. mediaList must be a list.
         Quicker if input corresponding to wav file(s) sampled at 16000Hz
         with a single channel. If so, hasrf must be set to True.
         """
+        print("--- ongoing, wait ---")
         alles = [os.path.splitext(os.path.basename(e)) for e in mediaList]
         base = [alles[i][0] for i in range(len(alles))]
         # ext = [alles[i][1] for i in range(len(alles))]
@@ -201,7 +205,7 @@ class Segmenter:
                 returns_from_gpu, returns_from_cpu = gpu_thread.join(), cpu_thread.join()
                 # Storing in .csv file or printed (if asked)
                 if not returns :
-                    seg2csv(returns_from_gpu, fout[i])
+                    seg2csv(returns_from_gpu, fout[i], verbose=False)
                     if verbose:
                         print("--- file {}/{} saved ---".format(i+1, s))
                 else:
@@ -215,7 +219,7 @@ class Segmenter:
             gpu_thread.start()
             returns_from_gpu = gpu_thread.join()
             if not returns :
-                seg2csv(returns_from_gpu, fout[i])
+                seg2csv(returns_from_gpu, fout[i], verbose=False)
                 if verbose:
                     print("--- file {}/{} saved ---".format(i+1, s))
             else:
@@ -243,7 +247,7 @@ class Segmenter:
             return None
 
 
-def seg2csv(seg, fout=None):
+def seg2csv(seg, fout=None, verbose=True):
     """
     Write to stdout (or fout if specified) the segmented file(s) lseg.
     If lseg a list and fout is specified, they must be the same length.
@@ -262,7 +266,8 @@ def seg2csv(seg, fout=None):
             with open(dest, 'wt') as fid:
                 for lab, beg, end in elem:
                     fid.write('%s\t%f\t%f\n' % (lab, beg, end))
-        print("File(s) successfuly saved")
+        if verbose:
+            print("File(s) successfuly saved")
 
 
 def to_parse(input_files):
