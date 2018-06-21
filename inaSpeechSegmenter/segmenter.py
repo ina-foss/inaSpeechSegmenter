@@ -205,7 +205,7 @@ class Segmenter:
                 returns_from_gpu, returns_from_cpu = gpu_thread.join(), cpu_thread.join()
                 # Storing in .csv file or printed (if asked)
                 if not returns :
-                    seg2csv(returns_from_gpu, fout[i], verbose=False)
+                    seg2csv([returns_from_gpu], fout[i], verbose=False)
                     if verbose:
                         print("--- file {}/{} saved ---".format(i+1, s))
                 else:
@@ -219,14 +219,13 @@ class Segmenter:
             gpu_thread.start()
             returns_from_gpu = gpu_thread.join()
             if not returns :
-                seg2csv(returns_from_gpu, fout[i], verbose=False)
+                seg2csv([returns_from_gpu], fout[i], verbose=False)
                 if verbose:
                     print("--- file {}/{} saved ---".format(i+1, s))
             else:
                 list_of_data.append(returns_from_gpu)
                 if verbose:
                    print("--- file {}/{} treated ---".format(i+1, s))
-            KB.clear_session()  # End Keras issues
             if verbose:
                 print("Segmentation done. {} file(s) treated.".format(i+1))
             return list_of_data
@@ -247,6 +246,10 @@ class Segmenter:
             return None
 
 
+    def __del__(self):
+        KB.clear_session()  # End Keras issues
+
+
 def seg2csv(seg, fout=None, verbose=True):
     """
     Write to stdout (or fout if specified) the segmented file(s) lseg.
@@ -255,14 +258,15 @@ def seg2csv(seg, fout=None, verbose=True):
     if seg is None:
         return
     if fout is None:
-        for i,elem in enumerate(seg):
-            print("file n= {}".format(i))
-            for lab, beg, end in elem:
-                print('%s\t%f\t%f' % (lab, beg, end))
+        if verbose:
+            for i,elem in enumerate(seg):
+                print("file n= {}".format(i))
+                for lab, beg, end in elem:
+                    print('%s\t%f\t%f' % (lab, beg, end))
     else:
         if isinstance(fout, str):
             fout = list([fout])
-        for dest,elem in zip(fout, seg):
+        for dest, elem in zip(fout, seg):
             with open(dest, 'wt') as fid:
                 for lab, beg, end in elem:
                     fid.write('%s\t%f\t%f\n' % (lab, beg, end))
