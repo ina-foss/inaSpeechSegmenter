@@ -138,7 +138,6 @@ class Segmenter:
         require input corresponding to wav file sampled at 16000Hz
         with a single channel
         """
-        print('segmenting with gender: %s' % gender)
         # Get Mel Power Spectrogram and Energy
         mspec, loge = _wav2feats(wavname)
         # perform energy-based activity detection
