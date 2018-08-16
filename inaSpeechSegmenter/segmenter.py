@@ -132,12 +132,13 @@ class Segmenter:
 
 
     
-    def segmentwav(self, wavname):
+    def segmentwav(self, wavname, gender=True):
         """
         do segmentation
         require input corresponding to wav file sampled at 16000Hz
         with a single channel
         """
+        print('segmenting with gender: %s' % gender)
         # Get Mel Power Spectrogram and Energy
         mspec, loge = _wav2feats(wavname)
         # perform energy-based activity detection
@@ -148,13 +149,15 @@ class Segmenter:
         assert len(data21) == len(vad), (len(data21), len(vad))
         assert len(finite) == len(data21), (len(data21), len(finite))
         szseg = _speechzic(self.sznn, data21, finite, vad)
+        if not gender:
+            return [(lab, start * .02, stop * .02) for lab, start, stop in szseg]
         
         data, finite = _get_patches(mspec, 68, 2)
         genderseg = _gender(self.gendernn, data, finite, szseg)
         # TODO: OFFSET MANAGEMENT
         return [(lab, start * .02, stop * .02) for lab, start, stop in genderseg]
 
-    def __call__(self, medianame, ffmpeg='ffmpeg', tmpdir=None):
+    def __call__(self, medianame, ffmpeg='ffmpeg', tmpdir=None, gender=True):
         """
         do segmentation on any kind on media file, including urls
         slower than segmentwav method
@@ -167,7 +170,7 @@ class Segmenter:
             p = Popen(args, stdout=PIPE, stderr=PIPE)
             output, error = p.communicate()
             assert p.returncode == 0, error
-            return self.segmentwav(tmpwav)
+            return self.segmentwav(tmpwav, gender=gender)
 
 def seg2csv(lseg, fout=None):
     if fout is None:
