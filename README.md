@@ -97,9 +97,9 @@ inaSpeechSegmenter has been presented at the IEEE International Conference on Ac
 }
 ```
 
-inaSpeechSegmenter won MIREX 2018 speech detection challenge.
-http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results
-Details on the speech detection submodule can be found bellow:
+inaSpeechSegmenter won MIREX 2018 speech detection challenge.  
+http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results  
+Details on the speech detection submodule can be found bellow:  
 
 
 ```bibtex
