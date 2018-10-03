@@ -97,6 +97,20 @@ inaSpeechSegmenter has been presented at the IEEE International Conference on Ac
 }
 ```
 
+inaSpeechSegmenter won MIREX 2018 speech detection challenge.
+http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results
+Details on the speech detection submodule can be found bellow:
+
+
+```bibtex
+@inproceedings{ddoukhanmirex2018,
+  author = {Doukhan, David and Lechapt, Eliott and Evrard, Marc and Carrive, Jean},
+  title = {INA’S MIREX 2018 MUSIC AND SPEECH DETECTION SYSTEM},
+  year = {2018},
+  booktitle={Music Information Retrieval Evaluation eXchange (MIREX 2018)}
+}
+```
+
 
 ## CREDITS
 
