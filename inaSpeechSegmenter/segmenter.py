@@ -29,6 +29,7 @@ import tempfile
 from subprocess import Popen, PIPE
 import numpy as np
 import keras
+import shutil
 
 from skimage.util import view_as_windows as vaw
 
@@ -159,6 +160,9 @@ class Segmenter:
         do segmentation on any kind on media file, including urls
         slower than segmentwav method
         """
+        if shutil.which(ffmpeg) is None:
+            raise(Exception("""ffmpeg program not found"""))
+        
         base, _ = os.path.splitext(os.path.basename(medianame))
 
         with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
