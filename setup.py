@@ -32,6 +32,7 @@ KEYWORDS = '''
 speech-segmentation
 audio-analysis
 music-detection
+speech-detection
 speech-music
 gender-equality
 gender-classification
@@ -56,17 +57,40 @@ CLASSIFIERS=[
     'Topic :: Sociology',
 ]
 
-DESCRIPTION='CNN-based audio segmentation toolkit. Does voice activity detection, music recognition, speaker gender recognition.'
-LONGDESCRIPTION='''Split audio signal into homogeneous zones of speech and music, and detect speaker gender.
-For further details, see the following publication:
-Doukhan, D., Carrive, J., Vallet, F., Larcher, A., Meignier, S. (2018).
-An Open-Source Speaker Gender Detection Framework for Monitoring Gender Equality.
-in 2018 IEEE International Conference on Acoustics Speech and Signal Processing (ICASSP)
+DESCRIPTION='CNN-based audio segmentation toolkit. Does voice activity detection, speech detection, music detection, speaker gender recognition.'
+LONGDESCRIPTION='''Split audio signal into homogeneous zones of speech and music, and detect speaker gender.  
+
+inaSpeechSegmenter has been presented at the IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP) 2018 conference in Calgary, Canada. If you use this toolbox in your research, you can cite the following work in your publications :
+
+
+```bibtex
+@inproceedings{ddoukhanicassp2018,
+  author = {Doukhan, David and Carrive, Jean and Vallet, Félicien and Larcher, Anthony and Meignier, Sylvain},
+  title = {An Open-Source Speaker Gender Detection Framework for Monitoring Gender Equality},
+  year = {2018},
+  organization={IEEE},
+  booktitle={Acoustics Speech and Signal Processing (ICASSP), 2018 IEEE International Conference on}
+}
+```
+
+inaSpeechSegmenter won MIREX 2018 speech detection challenge.  
+http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results  
+Details on the speech detection submodule can be found bellow:  
+
+
+```bibtex
+@inproceedings{ddoukhanmirex2018,
+  author = {Doukhan, David and Lechapt, Eliott and Evrard, Marc and Carrive, Jean},
+  title = {INA’S MIREX 2018 MUSIC AND SPEECH DETECTION SYSTEM},
+  year = {2018},
+  booktitle={Music Information Retrieval Evaluation eXchange (MIREX 2018)}
+}
+```
 '''
 
 setup(
     name = "inaSpeechSegmenter",
-    version = "0.0.5",
+    version = "0.1.0",
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
     description = DESCRIPTION,
@@ -81,6 +105,7 @@ setup(
     include_package_data = True,
     data_files = ['LICENSE'],
     long_description=LONGDESCRIPTION,
+    long_description_content_type='text/markdown',
     scripts=[os.path.join('scripts', script) for script in \
              ['ina_speech_segmenter.py']],
     classifiers=CLASSIFIERS,
