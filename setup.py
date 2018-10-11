@@ -66,7 +66,7 @@ in 2018 IEEE International Conference on Acoustics Speech and Signal Processing 
 
 setup(
     name = "inaSpeechSegmenter",
-    version = "0.0.4",
+    version = "0.0.5",
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
     description = DESCRIPTION,

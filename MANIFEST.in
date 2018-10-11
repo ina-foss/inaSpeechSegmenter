@@ -1,0 +1,4 @@
+include *.py *.cfg LICENSE *.md *.ipynb
+include scripts *.py
+include inaSpeechSegmenter/*.py
+include inaSpeechSegmenter/*.hdf5
