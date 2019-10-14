@@ -73,8 +73,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
 if __name__ == '__main__':
     msg = """
     Testing InaSpeechSegmenter
-    Currently: only 2 tests are supposed to work correctly: test_import and test_execution.
-    The remaining tests show errors that should be fixed soon
+    Currently: test_short is failing. This should be fixed soon
 """
     print(msg)
     
