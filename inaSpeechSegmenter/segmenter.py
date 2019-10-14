@@ -30,6 +30,7 @@ from subprocess import Popen, PIPE
 import numpy as np
 import keras
 import shutil
+import pandas as pd
 
 from skimage.util import view_as_windows as vaw
 
@@ -174,14 +175,6 @@ class Segmenter:
             return self.segmentwav(tmpwav)
 
 def seg2csv(lseg, fout=None):
-    if fout is None:
-        for lab, beg, end in lseg:
-            print('%s\t%f\t%f' % (lab, beg, end))
-    else:
-        with open(fout, 'wt') as fid:
-            for lab, beg, end in lseg:
-                fid.write('%s\t%f\t%f\n' % (lab, beg, end))
-
-
-
+    df = pd.DataFrame.from_records(lseg, columns=['labels', 'start', 'stop'])
+    df.to_csv(fout, sep='\t', index=False)
 
