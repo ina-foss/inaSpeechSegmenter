@@ -146,7 +146,7 @@ class Segmenter:
         vad = _energy_activity(loge)[::2]
         
         # perform speech/music segmentation using only 21 MFC coefficients
-        data21, finite = _get_patches(mspec[:, :21], 68, 2)
+        data21, finite = _get_patches(mspec[:, :21].copy(), 68, 2)
         assert len(data21) == len(vad), (len(data21), len(vad))
         assert len(finite) == len(data21), (len(data21), len(finite))
         szseg = _speechzic(self.sznn, data21, finite, vad)
