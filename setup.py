@@ -90,9 +90,10 @@ Details on the speech detection submodule can be found bellow:
 
 setup(
     name = "inaSpeechSegmenter",
-    version = "0.1.1",
+    version = "0.2.0",
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
+    test_suite="run_tests.py",
     description = DESCRIPTION,
     license = "MIT",
     install_requires=['numpy', 'keras', 'scikit-image', 'sidekit==1.2.4', 'pyannote.algorithms'],
