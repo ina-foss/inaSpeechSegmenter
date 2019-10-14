@@ -129,8 +129,8 @@ class Segmenter:
         Load neural network models
         """
         p = os.path.dirname(os.path.realpath(__file__)) + '/'
-        self.sznn = keras.models.load_model(p + 'keras_speech_music_cnn.hdf5')
-        self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5')      
+        self.sznn = keras.models.load_model(p + 'keras_speech_music_cnn.hdf5', compile=False)
+        self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5', compile=False)
 
 
     
