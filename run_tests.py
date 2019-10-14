@@ -58,11 +58,17 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         seg = Segmenter()
         ret = seg('./media/musanmix.mp3')
         for i in range(len(ret) -1):
-            self.assertEqual(ret[i+1][1] == ret[i][2],
-                              '%s VS %s' % (seg2str(i, ret[i]), seg2str(i+1, ret[i+1])))
+            curstop = ret[i][2]
+            nextstart = ret[i+1][1]
+            self.assertEqual(curstop, nextstart,
+                             '%s VS %s' % (seg2str(i, ret[i]), seg2str(i+1, ret[i+1])))
 
     def test_processingresult(self):
-        raise NotImplementedError('TODO')
+        from inaSpeechSegmenter import Segmenter
+        seg = Segmenter()
+        ret = seg('./media/musanmix.mp3')
+        ref = [('Music', 0.0, 22.48), ('NOACTIVITY', 22.48, 29.080000000000002), ('Male', 29.080000000000002, 32.480000000000004), ('Music', 32.480000000000004, 52.800000000000004), ('NOACTIVITY', 52.800000000000004, 54.78), ('Music', 54.78, 55.74), ('NOACTIVITY', 55.74, 63.34), ('Male', 63.34, 68.26), ('NOACTIVITY', 68.26, 68.92), ('Male', 68.92, 71.60000000000001), ('NOACTIVITY', 71.60000000000001, 72.0), ('Male', 72.0, 73.82000000000001), ('NOACTIVITY', 73.82000000000001, 74.5)]
+        self.assertEqual(ref, ret)
             
 if __name__ == '__main__':
     msg = """

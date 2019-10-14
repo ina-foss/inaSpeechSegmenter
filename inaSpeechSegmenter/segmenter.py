@@ -109,6 +109,12 @@ def _gender(nn, patches, finite_patches, speechzicseg):
     return ret
 
 def _binidx2seglist(binidx):
+    """
+    ss._binidx2seglist((['f'] * 5) + (['bbb'] * 10) + ['v'] * 5)
+    Out: [('f', 0, 5), ('bbb', 5, 15), ('v', 15, 20)]
+    
+    #TODO: is there a pandas alternative??
+    """
     curlabel = None
     bseg = -1
     ret = []
@@ -118,7 +124,7 @@ def _binidx2seglist(binidx):
                 ret.append((curlabel, bseg, i))
             curlabel = e
             bseg = i
-    ret.append((curlabel, bseg, i))
+    ret.append((curlabel, bseg, i + 1))
     return ret
 
 
