@@ -53,6 +53,7 @@ def _wav2feats(wavname):
     assert len(shp) == 1 or (len(shp) == 2 and shp[1] == 1)
     # wav sample rate should be 16000 Hz
     assert read_framerate == 16000
+    assert sampwidth == 2
     sig *= (2**(15-sampwidth))
     _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
     return mspec, loge
