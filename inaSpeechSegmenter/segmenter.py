@@ -31,6 +31,7 @@ import numpy as np
 import keras
 import shutil
 import pandas as pd
+import warnings
 
 from skimage.util import view_as_windows as vaw
 
@@ -149,16 +150,32 @@ class Segmenter:
         """
         # Get Mel Power Spectrogram and Energy
         mspec, loge = _wav2feats(wavname)
+
+        # Management of short duration segments
+        difflen = 0
+        if len(loge) < 68:
+            difflen = 68 - len(loge)
+            warnings.warn("media %s duration is short. Robust results require length of at least 720 milliseconds" %wavname)
+            mspec = np.concatenate((mspec, np.ones((difflen, 24)) * np.min(mspec)))
+            #loge = np.concatenate((loge, np.ones(difflen) * np.min(mspec)))
+
+
         # perform energy-based activity detection
         vad = _energy_activity(loge)[::2]
         
         # perform speech/music segmentation using only 21 MFC coefficients
         data21, finite = _get_patches(mspec[:, :21].copy(), 68, 2)
+        if difflen > 0:
+            data21 = data21[:-int(difflen/2), :, :]
+            finite = finite[:-int(difflen/2)]
         assert len(data21) == len(vad), (len(data21), len(vad))
         assert len(finite) == len(data21), (len(data21), len(finite))
         szseg = _speechzic(self.sznn, data21, finite, vad)
         
         data, finite = _get_patches(mspec, 68, 2)
+        if difflen > 0:
+            data = data[:-int(difflen/2), :, :]
+            finite = finite[:-int(difflen/2)]        
         genderseg = _gender(self.gendernn, data, finite, szseg)
         # TODO: OFFSET MANAGEMENT
         return [(lab, start * .02, stop * .02) for lab, start, stop in genderseg]
@@ -168,6 +185,8 @@ class Segmenter:
         do segmentation on any kind on media file, including urls
         slower than segmentwav method
         """
+
+        # TODO: move this to init
         if shutil.which(ffmpeg) is None:
             raise(Exception("""ffmpeg program not found"""))
         

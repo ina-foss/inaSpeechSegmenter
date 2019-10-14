@@ -51,7 +51,7 @@ $ pip install tensorflow # for a CPU implementation
 $ cd inaSpeechSegmenter
 $ python setup.py install
 # check program behavior
-$ python setup.py check
+$ python setup.py test
 ```
 
 ## Using inaSpeechSegmenter
