@@ -170,7 +170,7 @@ class SpeechMusicNoise(DnnSegmenter):
     model_fname = 'keras_speech_music_noise_cnn.hdf5'
     inlabel = 'energy'
     nmel = 21
-    viterbi_arg = 150
+    viterbi_arg = 100
     
 class Gender(DnnSegmenter):
     # Gender Segmentation, requires voice activity detection
