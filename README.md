@@ -107,7 +107,7 @@ Class constructor accept 3 optional arguments:
   * 'sm' was not trained with noise examples, and split signal into speech and music segments. Noise segments are either considered as speech or music. This engine was used in ICASSP study, and won MIREX 2018 speech detection challenge.
 * detect_gender (default: True): if set to True, performs gender segmentation on speech segment and outputs labels 'female' or 'male'. Otherwise, outputs labels 'speech' (faster).
 * ffmpeg: allows to provide a specific binary of ffmpeg instead of default system installation
-```
+
 
 See the following notebook for a comprehensive example: [API Tutorial Here!](API_Tutorial.ipynb)
 
