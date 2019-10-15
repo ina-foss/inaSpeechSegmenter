@@ -80,20 +80,6 @@ def _get_patches(mspec, w, step):
     return data, finite
 
 
-# def _gender(nn, patches, finite_patches, speechzicseg):
-#     ret = []
-#     for lab, start, stop in speechzicseg:
-#         if lab != 'speech':#in ['Music', 'NOACTIVITY']:
-#             # no energy
-#             ret.append((lab, start, stop))
-#             continue
-#         rawpred = nn.predict(patches[start:stop, :])
-#         rawpred[finite_patches[start:stop] == False, :] = 0.5
-#         pred = viterbi_decoding(np.log(rawpred), log_trans_exp(80))
-#         for lab2, start2, stop2 in _binidx2seglist(pred):
-#             ret.append((['female', 'male'][int(lab2)], start2+start, stop2+start))
-#     return ret
-
 def _binidx2seglist(binidx):
     """
     ss._binidx2seglist((['f'] * 5) + (['bbb'] * 10) + ['v'] * 5)
@@ -164,7 +150,6 @@ class DnnSegmenter:
             rawpred = self.nn.predict(patches[start:stop, :])
             rawpred[finite[start:stop] == False, :] = 0.5
 
-            # specific code bellow
             pred = viterbi_decoding(np.log(rawpred), diag_trans_exp(self.viterbi_arg, len(self.outlabels)))
             for lab2, start2, stop2 in _binidx2seglist(pred):
                 ret.append((self.outlabels[int(lab2)], start2+start, stop2+start))            
@@ -172,6 +157,7 @@ class DnnSegmenter:
 
 
 class SpeechMusic(DnnSegmenter):
+    # Voice activity detection: requires energetic activity detection
     outlabels = ('speech', 'music')
     model_fname = 'keras_speech_music_cnn.hdf5'
     inlabel = 'energy'
@@ -179,6 +165,7 @@ class SpeechMusic(DnnSegmenter):
     viterbi_arg = 150
 
 class SpeechMusicNoise(DnnSegmenter):
+    # Voice activity detection: requires energetic activity detection
     outlabels = ('speech', 'music', 'noise')
     model_fname = 'keras_speech_music_noise_cnn.hdf5'
     inlabel = 'energy'
@@ -186,11 +173,13 @@ class SpeechMusicNoise(DnnSegmenter):
     viterbi_arg = 150
     
 class Gender(DnnSegmenter):
+    # Gender Segmentation, requires voice activity detection
     outlabels = ('female', 'male')
     model_fname = 'keras_male_female_cnn.hdf5'
     inlabel = 'speech'
     nmel = 24
     viterbi_arg = 80
+
 
 class Segmenter:
     def __init__(self, vad_engine='sm', detect_gender=True, ffmpeg='ffmpeg'):
@@ -246,24 +235,24 @@ class Segmenter:
 
 
         # perform energy-based activity detection
-        ead = []
+        lseg = []
         for lab, start, stop in _binidx2seglist(_energy_activity(loge)[::2]):
             if lab == 0:
                 lab = 'noEnergy'
             else:
                 lab = 'energy'
-            ead.append((lab, start, stop))
+            lseg.append((lab, start, stop))
 
         # perform voice activity detection
-        speech_seg = self.vad(mspec, ead, difflen)
-        if not self.detect_gender:
-            # TODO: OFFSET MANAGEMENT
-            return [(lab, start * .02, stop * .02) for lab, start, stop in speech_seg]
+        lseg = self.vad(mspec, lseg, difflen)
 
-        # perform gender segmentation
-        gender_seg = self.gender(mspec, speech_seg, difflen)
+        # perform gender segmentation on speech segments
+        if self.detect_gender:
+            lseg = self.gender(mspec, lseg, difflen)
+
         # TODO: OFFSET MANAGEMENT
-        return [(lab, start * .02, stop * .02) for lab, start, stop in gender_seg]
+        return [(lab, start * .02, stop * .02) for lab, start, stop in lseg]
+
 
     def __call__(self, medianame, tmpdir=None):
         """
