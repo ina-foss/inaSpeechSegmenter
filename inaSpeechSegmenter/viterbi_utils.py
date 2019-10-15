@@ -40,3 +40,10 @@ def log_trans_exp(exp,cost0=0, cost1=0):
     ret[0,0]= cost0
     ret[1,1]= cost1
     return ret
+
+def diag_trans_exp(exp, dim):
+    cost = -exp * np.log(10)
+    ret = np.ones((dim, dim)) * cost
+    for i in range(dim):
+        ret[i, i] = 0
+    return ret

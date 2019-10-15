@@ -32,6 +32,7 @@ KEYWORDS = '''
 speech-segmentation
 audio-analysis
 music-detection
+noise-detection
 speech-detection
 speech-music
 gender-equality
@@ -39,6 +40,7 @@ gender-classification
 speaker-gender
 speech
 music
+noise
 voice-activity-detection'''.strip().split('\n')
 
 CLASSIFIERS=[
@@ -57,8 +59,8 @@ CLASSIFIERS=[
     'Topic :: Sociology',
 ]
 
-DESCRIPTION='CNN-based audio segmentation toolkit. Does voice activity detection, speech detection, music detection, speaker gender recognition.'
-LONGDESCRIPTION='''Split audio signal into homogeneous zones of speech and music, and detect speaker gender.  
+DESCRIPTION='CNN-based audio segmentation toolkit. Does voice activity detection, speech detection, music detection, noise detection, speaker gender recognition.'
+LONGDESCRIPTION='''Split audio signal into homogeneous zones of speech, music and noise. Then detects speaker gender.  
 
 inaSpeechSegmenter has been presented at the IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP) 2018 conference in Calgary, Canada. If you use this toolbox in your research, you can cite the following work in your publications :
 
@@ -90,7 +92,7 @@ Details on the speech detection submodule can be found bellow:
 
 setup(
     name = "inaSpeechSegmenter",
-    version = "0.2.3",
+    version = "0.3.0",
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
     test_suite="run_tests.py",

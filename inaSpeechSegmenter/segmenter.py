@@ -40,7 +40,7 @@ from sidekit.frontend.io import read_wav
 from sidekit.frontend.features import mfcc
 
 from pyannote.algorithms.utils.viterbi import viterbi_decoding
-from .viterbi_utils import log_trans_exp, pred2logemission
+from .viterbi_utils import log_trans_exp, pred2logemission, diag_trans_exp
 
 
 def _wav2feats(wavname):
@@ -80,26 +80,42 @@ def _get_patches(mspec, w, step):
     return data, finite
 
 
-def _speechzic(nn, patches, finite_patches, vad):
-    ret = []
-    for lab, start, stop in _binidx2seglist(vad):
-        if lab == 0:
-            # no energy
-            ret.append(('NOACTIVITY', start, stop))
-            continue
-        #print(start, stop)
-        rawpred = nn.predict(patches[start:stop, :])
-        rawpred[finite_patches[start:stop] == False, :] = 0.5
-        pred = viterbi_decoding(np.log(rawpred), log_trans_exp(150))
-        for lab2, start2, stop2 in _binidx2seglist(pred):
-            ret.append((['Speech', 'Music'][int(lab2)], start2+start, stop2+start))
-    return ret
+# def _speechzic(nn, patches, finite_patches, vad):
+#     ret = []
+#     for lab, start, stop in _binidx2seglist(vad):
+#         if lab == 0:
+#             # no energy
+#             ret.append(('NOACTIVITY', start, stop))
+#             continue
+#         #print(start, stop)
+#         rawpred = nn.predict(patches[start:stop, :])
+#         rawpred[finite_patches[start:stop] == False, :] = 0.5
+#         pred = viterbi_decoding(np.log(rawpred), log_trans_exp(150))
+#         for lab2, start2, stop2 in _binidx2seglist(pred):
+#             ret.append((['Speech', 'Music'][int(lab2)], start2+start, stop2+start))
+#     return ret
+
+
+# def _speechzicnoise(nn, patches, finite_patches, vad):
+#     ret = []
+#     for lab, start, stop in _binidx2seglist(vad):
+#         if lab == 0:
+#             # no energy
+#             ret.append(('noEnergy', start, stop))
+#             continue
+#         #print(start, stop)
+#         rawpred = nn.predict(patches[start:stop, :])
+#         rawpred[finite_patches[start:stop] == False, :] = 0.5
+#         pred = viterbi_decoding(np.log(rawpred), diag_trans_exp(150, 3))
+#         for lab2, start2, stop2 in _binidx2seglist(pred):
+#             ret.append((['speech', 'music', 'noise'][int(lab2)], start2+start, stop2+start))
+#     return ret
 
 
 def _gender(nn, patches, finite_patches, speechzicseg):
     ret = []
     for lab, start, stop in speechzicseg:
-        if lab in ['Music', 'NOACTIVITY']:
+        if lab != 'speech':#in ['Music', 'NOACTIVITY']:
             # no energy
             ret.append((lab, start, stop))
             continue
@@ -107,7 +123,7 @@ def _gender(nn, patches, finite_patches, speechzicseg):
         rawpred[finite_patches[start:stop] == False, :] = 0.5
         pred = viterbi_decoding(np.log(rawpred), log_trans_exp(80))
         for lab2, start2, stop2 in _binidx2seglist(pred):
-            ret.append((['Female', 'Male'][int(lab2)], start2+start, stop2+start))
+            ret.append((['female', 'male'][int(lab2)], start2+start, stop2+start))
     return ret
 
 def _binidx2seglist(binidx):
@@ -130,16 +146,82 @@ def _binidx2seglist(binidx):
     return ret
 
 
+class Vad:
+    """
+    Base class to be used between signal activity and gender segmentation.
+    It splits signal labelled as active into segments labelled as speech
+    and/or other types of signals (music, noise, ...)
+    The input of this modules correspond to the 21 first bands of the mel
+    spectrogram
+    """
+    def __call__(self, mspec, vad, difflen = 0):
+        """
+        * input
+        mspec: 21 bands mel spectrogram
+        difflen: 0 if the original length of the mel spectrogram is >= 68
+                otherwise it is set to 68 - length(mspec)
+        """
+        patches, finite = _get_patches(mspec[:, :21].copy(), 68, 2)
+        if difflen > 0:
+            patches = patches[:-int(difflen / 2), :, :]
+            finite = finite[:-int(difflen / 2)]
+            
+        assert len(patches) == len(vad), (len(patches), len(vad))
+        assert len(finite) == len(patches), (len(patches), len(finite))
+            
+        ret = []
+        for lab, start, stop in _binidx2seglist(vad):
+            if lab == 0:
+                # no energy
+                ret.append(('noEnergy', start, stop))
+                continue
 
-class Segmenter:
+            rawpred = self.nn.predict(patches[start:stop, :])
+            rawpred[finite[start:stop] == False, :] = 0.5
+
+            # specific code bellow
+            pred = self._decode(rawpred)
+            #pred = viterbi_decoding(np.log(rawpred), diag_trans_exp(150, 3))
+            for lab2, start2, stop2 in _binidx2seglist(pred):
+                #ret.append((['speech', 'music', 'noise'][int(lab2)], start2+start, stop2+start))
+                ret.append((self.outlabels[int(lab2)], start2+start, stop2+start))            
+        return ret
+    def _decode(self, rawpred):
+        raise(NotImplementedError())
+
+class SpeechMusic(Vad):
     def __init__(self):
+        p = os.path.dirname(os.path.realpath(__file__)) + '/'
+        self.nn = keras.models.load_model(p + 'keras_speech_music_cnn.hdf5', compile=False)
+        self.outlabels = ('speech', 'music')
+    def _decode(self, rawpred):
+        return viterbi_decoding(np.log(rawpred), log_trans_exp(150))
+
+class SpeechMusicNoise(Vad):
+    def __init__(self):
+        p = os.path.dirname(os.path.realpath(__file__)) + '/'
+        self.nn = keras.models.load_model(p + 'keras_speech_music_noise_cnn.hdf5', compile=False)
+        self.outlabels = ('speech', 'music', 'noise')
+    def _decode(self, rawpred):
+        return viterbi_decoding(np.log(rawpred), diag_trans_exp(150, 3))
+
+    
+class Segmenter:
+    def __init__(self, vad_engine='sm'):
         """
         Load neural network models
+        vad_engine can be 'sm' (speech/music) or 'smn' (speech/music/noise)
+                'sm' was used in the results presented in ICASSP 2017 paper
+                        and in MIREX 2018 challenge submission
+                'smn' has been implemented more recently and has not been evaluated in papers
         """
         p = os.path.dirname(os.path.realpath(__file__)) + '/'
-        self.sznn = keras.models.load_model(p + 'keras_speech_music_cnn.hdf5', compile=False)
         self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5', compile=False)
-
+        assert vad_engine in ['sm', 'smn']
+        if vad_engine == 'sm':
+            self.vad = SpeechMusic()
+        elif vad_engine == 'smn':
+            self.vad = SpeechMusicNoise()
 
     
     def segmentwav(self, wavname):
@@ -162,21 +244,25 @@ class Segmenter:
 
         # perform energy-based activity detection
         vad = _energy_activity(loge)[::2]
+
+        # perform voice activity detection
+        speech_seg = self.vad(mspec, vad, difflen)
         
-        # perform speech/music segmentation using only 21 MFC coefficients
-        data21, finite = _get_patches(mspec[:, :21].copy(), 68, 2)
-        if difflen > 0:
-            data21 = data21[:-int(difflen/2), :, :]
-            finite = finite[:-int(difflen/2)]
-        assert len(data21) == len(vad), (len(data21), len(vad))
-        assert len(finite) == len(data21), (len(data21), len(finite))
-        szseg = _speechzic(self.sznn, data21, finite, vad)
+        # # perform speech/music segmentation using only 21 MFC coefficients
+        # data21, finite = _get_patches(mspec[:, :21].copy(), 68, 2)
+        # if difflen > 0:
+        #     data21 = data21[:-int(difflen/2), :, :]
+        #     finite = finite[:-int(difflen/2)]
+        # assert len(data21) == len(vad), (len(data21), len(vad))
+        # assert len(finite) == len(data21), (len(data21), len(finite))
+        # szseg = _speechzic(self.sznn, data21, finite, vad)
+
         
         data, finite = _get_patches(mspec, 68, 2)
         if difflen > 0:
             data = data[:-int(difflen/2), :, :]
             finite = finite[:-int(difflen/2)]        
-        genderseg = _gender(self.gendernn, data, finite, szseg)
+        genderseg = _gender(self.gendernn, data, finite, speech_seg)
         # TODO: OFFSET MANAGEMENT
         return [(lab, start * .02, stop * .02) for lab, start, stop in genderseg]
 
