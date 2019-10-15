@@ -40,7 +40,9 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         
     def test_short(self):
         seg = Segmenter()
-        seg('./media/0021.mp3')
+        ret = seg('./media/0021.mp3')
+        ref = [('male', 0, 0.66)]
+        self.assertEqual(ref, ret)
 
     def test_boundaries(self):
 

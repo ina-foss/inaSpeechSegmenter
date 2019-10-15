@@ -80,19 +80,19 @@ def _get_patches(mspec, w, step):
     return data, finite
 
 
-def _gender(nn, patches, finite_patches, speechzicseg):
-    ret = []
-    for lab, start, stop in speechzicseg:
-        if lab != 'speech':#in ['Music', 'NOACTIVITY']:
-            # no energy
-            ret.append((lab, start, stop))
-            continue
-        rawpred = nn.predict(patches[start:stop, :])
-        rawpred[finite_patches[start:stop] == False, :] = 0.5
-        pred = viterbi_decoding(np.log(rawpred), log_trans_exp(80))
-        for lab2, start2, stop2 in _binidx2seglist(pred):
-            ret.append((['female', 'male'][int(lab2)], start2+start, stop2+start))
-    return ret
+# def _gender(nn, patches, finite_patches, speechzicseg):
+#     ret = []
+#     for lab, start, stop in speechzicseg:
+#         if lab != 'speech':#in ['Music', 'NOACTIVITY']:
+#             # no energy
+#             ret.append((lab, start, stop))
+#             continue
+#         rawpred = nn.predict(patches[start:stop, :])
+#         rawpred[finite_patches[start:stop] == False, :] = 0.5
+#         pred = viterbi_decoding(np.log(rawpred), log_trans_exp(80))
+#         for lab2, start2, stop2 in _binidx2seglist(pred):
+#             ret.append((['female', 'male'][int(lab2)], start2+start, stop2+start))
+#     return ret
 
 def _binidx2seglist(binidx):
     """
@@ -114,26 +114,41 @@ def _binidx2seglist(binidx):
     return ret
 
 
-class Vad:
+class DnnSegmenter:
     """
-    Base class to be used between signal activity and gender segmentation.
-    It splits signal labelled as active into segments labelled as speech
-    and/or other types of signals (music, noise, ...)
-    The input of this modules correspond to the 21 first bands of the mel
-    spectrogram
+    DnnSegmenter is an abstract class allowing to perform Dnn-based
+    segmentation using Keras serialized models using 24 mel spectrogram
+    features obtained with SIDEKIT framework.
+
+    Child classes MUST define the following class attributes:
+    * nmel: the number of mel bands to used (max: 24)
+    * viterbi_arg: the argument to be used with viterbi post-processing
+    * model_fname: the filename of the serialized keras model to be used
+        the model should be stored in the current directory
+    * inlabel: only segments with label name inlabel will be analyzed.
+        other labels will stay unchanged
+    * outlabels: the labels associated the output of neural network models
     """
     def __init__(self):
+        # load the DNN model
         p = os.path.dirname(os.path.realpath(__file__)) + '/'
         self.nn = keras.models.load_model(p + self.model_fname, compile=False)        
     
     def __call__(self, mspec, lseg, difflen = 0):
         """
-        * input
-        mspec: 21 bands mel spectrogram
-        difflen: 0 if the original length of the mel spectrogram is >= 68
+        *** input
+        * mspec: mel spectrogram
+        * lseg: list of tuples (label, start, stop) corresponding to previous segmentations
+        * difflen: 0 if the original length of the mel spectrogram is >= 68
                 otherwise it is set to 68 - length(mspec)
+        *** output
+        a list of adjacent tuples (label, start, stop)
         """
-        patches, finite = _get_patches(mspec[:, :21].copy(), 68, 2)
+
+        if self.nmel < 24:
+            mspec = mspec[:, :self.nmel].copy()
+        
+        patches, finite = _get_patches(mspec, 68, 2)
         if difflen > 0:
             patches = patches[:-int(difflen / 2), :, :]
             finite = finite[:-int(difflen / 2)]
@@ -150,26 +165,32 @@ class Vad:
             rawpred[finite[start:stop] == False, :] = 0.5
 
             # specific code bellow
-            pred = viterbi_decoding(np.log(rawpred), diag_trans_exp(150, len(self.outlabels)))
+            pred = viterbi_decoding(np.log(rawpred), diag_trans_exp(self.viterbi_arg, len(self.outlabels)))
             for lab2, start2, stop2 in _binidx2seglist(pred):
                 ret.append((self.outlabels[int(lab2)], start2+start, stop2+start))            
         return ret
 
 
-class SpeechMusic(Vad):
+class SpeechMusic(DnnSegmenter):
     outlabels = ('speech', 'music')
     model_fname = 'keras_speech_music_cnn.hdf5'
     inlabel = 'energy'
+    nmel = 21
+    viterbi_arg = 150
 
-class SpeechMusicNoise(Vad):
+class SpeechMusicNoise(DnnSegmenter):
     outlabels = ('speech', 'music', 'noise')
     model_fname = 'keras_speech_music_noise_cnn.hdf5'
     inlabel = 'energy'
+    nmel = 21
+    viterbi_arg = 150
     
-class Gender(Vad):
+class Gender(DnnSegmenter):
     outlabels = ('female', 'male')
     model_fname = 'keras_male_female_cnn.hdf5'
     inlabel = 'speech'
+    nmel = 24
+    viterbi_arg = 80
 
 class Segmenter:
     def __init__(self, vad_engine='sm', detect_gender=True, ffmpeg='ffmpeg'):
@@ -203,8 +224,8 @@ class Segmenter:
         assert detect_gender in [True, False]
         self.detect_gender = detect_gender
         if detect_gender:
-            p = os.path.dirname(os.path.realpath(__file__)) + '/'
-            self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5', compile=False)    
+            self.gender = Gender()
+            
 
     def segmentwav(self, wavname):
         """
@@ -239,14 +260,10 @@ class Segmenter:
             # TODO: OFFSET MANAGEMENT
             return [(lab, start * .02, stop * .02) for lab, start, stop in speech_seg]
 
-        # perform gender segmentation on 'speech' labelled segments
-        data, finite = _get_patches(mspec, 68, 2)
-        if difflen > 0:
-            data = data[:-int(difflen/2), :, :]
-            finite = finite[:-int(difflen/2)]        
-        genderseg = _gender(self.gendernn, data, finite, speech_seg)
+        # perform gender segmentation
+        gender_seg = self.gender(mspec, speech_seg, difflen)
         # TODO: OFFSET MANAGEMENT
-        return [(lab, start * .02, stop * .02) for lab, start, stop in genderseg]
+        return [(lab, start * .02, stop * .02) for lab, start, stop in gender_seg]
 
     def __call__(self, medianame, tmpdir=None):
         """
