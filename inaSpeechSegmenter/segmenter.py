@@ -126,7 +126,7 @@ class Vad:
         p = os.path.dirname(os.path.realpath(__file__)) + '/'
         self.nn = keras.models.load_model(p + self.model_fname, compile=False)        
     
-    def __call__(self, mspec, vad, difflen = 0):
+    def __call__(self, mspec, lseg, difflen = 0):
         """
         * input
         mspec: 21 bands mel spectrogram
@@ -138,14 +138,12 @@ class Vad:
             patches = patches[:-int(difflen / 2), :, :]
             finite = finite[:-int(difflen / 2)]
             
-        assert len(patches) == len(vad), (len(patches), len(vad))
         assert len(finite) == len(patches), (len(patches), len(finite))
             
         ret = []
-        for lab, start, stop in _binidx2seglist(vad):
-            if lab == 0:
-                # no energy
-                ret.append(('noEnergy', start, stop))
+        for lab, start, stop in lseg:
+            if lab != 'energy':
+                ret.append((lab, start, stop))
                 continue
 
             rawpred = self.nn.predict(patches[start:stop, :])
@@ -166,7 +164,9 @@ class SpeechMusicNoise(Vad):
     outlabels = ('speech', 'music', 'noise')
     model_fname = 'keras_speech_music_noise_cnn.hdf5'
 
-
+class Gender(Vad):
+    outlabels = ('female', 'male')
+    model_fname = 'keras_male_female_cnn.hdf5'
   
     
 class Segmenter:
@@ -223,10 +223,16 @@ class Segmenter:
 
 
         # perform energy-based activity detection
-        vad = _energy_activity(loge)[::2]
+        ead = []
+        for lab, start, stop in _binidx2seglist(_energy_activity(loge)[::2]):
+            if lab == 0:
+                lab = 'noEnergy'
+            else:
+                lab = 'energy'
+            ead.append((lab, start, stop))
 
         # perform voice activity detection
-        speech_seg = self.vad(mspec, vad, difflen)
+        speech_seg = self.vad(mspec, ead, difflen)
         if not self.detect_gender:
             # TODO: OFFSET MANAGEMENT
             return [(lab, start * .02, stop * .02) for lab, start, stop in speech_seg]
