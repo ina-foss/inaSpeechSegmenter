@@ -182,7 +182,7 @@ class Gender(DnnSegmenter):
 
 
 class Segmenter:
-    def __init__(self, vad_engine='sm', detect_gender=True, ffmpeg='ffmpeg'):
+    def __init__(self, vad_engine='smn', detect_gender=True, ffmpeg='ffmpeg'):
         """
         Load neural network models
         

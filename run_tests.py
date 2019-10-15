@@ -39,7 +39,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         ret = seg('./media/musanmix.mp3')
         
     def test_short(self):
-        seg = Segmenter()
+        seg = Segmenter(vad_engine='sm')
         ret = seg('./media/0021.mp3')
         ref = [('male', 0, 0.66)]
         self.assertEqual(ref, ret)
@@ -59,7 +59,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
                              '%s VS %s' % (seg2str(i, ret[i]), seg2str(i+1, ret[i+1])))
 
     def test_processingresult(self):
-        seg = Segmenter()
+        seg = Segmenter(vad_engine='sm')
         ret = seg('./media/musanmix.mp3')
         ref = [('music', 0.0, 22.48), ('noEnergy', 22.48, 29.080000000000002), ('male', 29.080000000000002, 32.480000000000004), ('music', 32.480000000000004, 52.800000000000004), ('noEnergy', 52.800000000000004, 54.78), ('music', 54.78, 55.74), ('noEnergy', 55.74, 63.34), ('male', 63.34, 68.26), ('noEnergy', 68.26, 68.92), ('male', 68.92, 71.60000000000001), ('noEnergy', 71.60000000000001, 72.0), ('male', 72.0, 73.82000000000001), ('noEnergy', 73.82000000000001, 74.5)]
         self.assertEqual(ref, ret)
