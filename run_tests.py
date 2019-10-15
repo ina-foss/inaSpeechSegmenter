@@ -25,26 +25,20 @@
 
 
 import unittest
+from inaSpeechSegmenter import Segmenter
 
 class TestInaSpeechSegmenter(unittest.TestCase):
-    def test_tf(self):
-        # tensorflow should be installed and is not included
-        # in inaspeechsegmenter dependencies
-        import tensorflow as tf
     
-    def test_import(self):
-        from inaSpeechSegmenter import Segmenter
+    def test_init(self):
         seg = Segmenter()
 
     def test_execution(self):
         # if this test fails, then you should check to correctness of your
         # tensorflow installation
-        from inaSpeechSegmenter import Segmenter
         seg = Segmenter()
         ret = seg('./media/musanmix.mp3')
         
     def test_short(self):
-        from inaSpeechSegmenter import Segmenter
         seg = Segmenter()
         seg('./media/0021.mp3')
 
@@ -54,7 +48,6 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             label, start, stop  = tseg
             return 'seg %d <%s, %f, %f>' % (iseg, label, start, stop)
         
-        from inaSpeechSegmenter import Segmenter
         seg = Segmenter()
         ret = seg('./media/musanmix.mp3')
         for i in range(len(ret) -1):
@@ -64,17 +57,10 @@ class TestInaSpeechSegmenter(unittest.TestCase):
                              '%s VS %s' % (seg2str(i, ret[i]), seg2str(i+1, ret[i+1])))
 
     def test_processingresult(self):
-        from inaSpeechSegmenter import Segmenter
         seg = Segmenter()
         ret = seg('./media/musanmix.mp3')
         ref = [('music', 0.0, 22.48), ('noEnergy', 22.48, 29.080000000000002), ('male', 29.080000000000002, 32.480000000000004), ('music', 32.480000000000004, 52.800000000000004), ('noEnergy', 52.800000000000004, 54.78), ('music', 54.78, 55.74), ('noEnergy', 55.74, 63.34), ('male', 63.34, 68.26), ('noEnergy', 68.26, 68.92), ('male', 68.92, 71.60000000000001), ('noEnergy', 71.60000000000001, 72.0), ('male', 72.0, 73.82000000000001), ('noEnergy', 73.82000000000001, 74.5)]
         self.assertEqual(ref, ret)
             
 if __name__ == '__main__':
-    msg = """
-    Testing InaSpeechSegmenter
-    Currently: test_short is failing. This should be fixed soon
-"""
-    print(msg)
-    
     unittest.main()
