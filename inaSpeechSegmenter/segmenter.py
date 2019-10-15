@@ -142,7 +142,7 @@ class Vad:
             
         ret = []
         for lab, start, stop in lseg:
-            if lab != 'energy':
+            if lab != self.inlabel:
                 ret.append((lab, start, stop))
                 continue
 
@@ -159,16 +159,18 @@ class Vad:
 class SpeechMusic(Vad):
     outlabels = ('speech', 'music')
     model_fname = 'keras_speech_music_cnn.hdf5'
+    inlabel = 'energy'
 
 class SpeechMusicNoise(Vad):
     outlabels = ('speech', 'music', 'noise')
     model_fname = 'keras_speech_music_noise_cnn.hdf5'
-
+    inlabel = 'energy'
+    
 class Gender(Vad):
     outlabels = ('female', 'male')
     model_fname = 'keras_male_female_cnn.hdf5'
-  
-    
+    inlabel = 'speech'
+
 class Segmenter:
     def __init__(self, vad_engine='sm', detect_gender=True, ffmpeg='ffmpeg'):
         """
