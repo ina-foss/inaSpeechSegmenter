@@ -40,7 +40,7 @@ from sidekit.frontend.io import read_wav
 from sidekit.frontend.features import mfcc
 
 from pyannote.algorithms.utils.viterbi import viterbi_decoding
-from .viterbi_utils import log_trans_exp, pred2logemission, diag_trans_exp
+from .viterbi_utils import pred2logemission, diag_trans_exp, log_trans_exp
 
 
 def _wav2feats(wavname):
@@ -122,6 +122,10 @@ class Vad:
     The input of this modules correspond to the 21 first bands of the mel
     spectrogram
     """
+    def __init__(self):
+        p = os.path.dirname(os.path.realpath(__file__)) + '/'
+        self.nn = keras.models.load_model(p + self.model_fname, compile=False)        
+    
     def __call__(self, mspec, vad, difflen = 0):
         """
         * input
@@ -148,31 +152,22 @@ class Vad:
             rawpred[finite[start:stop] == False, :] = 0.5
 
             # specific code bellow
-            pred = self._decode(rawpred)
-            #pred = viterbi_decoding(np.log(rawpred), diag_trans_exp(150, 3))
+            pred = viterbi_decoding(np.log(rawpred), diag_trans_exp(150, len(self.outlabels)))
             for lab2, start2, stop2 in _binidx2seglist(pred):
-                #ret.append((['speech', 'music', 'noise'][int(lab2)], start2+start, stop2+start))
                 ret.append((self.outlabels[int(lab2)], start2+start, stop2+start))            
         return ret
-    def _decode(self, rawpred):
-        raise(NotImplementedError())
+
 
 class SpeechMusic(Vad):
-    def __init__(self):
-        p = os.path.dirname(os.path.realpath(__file__)) + '/'
-        self.nn = keras.models.load_model(p + 'keras_speech_music_cnn.hdf5', compile=False)
-        self.outlabels = ('speech', 'music')
-    def _decode(self, rawpred):
-        return viterbi_decoding(np.log(rawpred), log_trans_exp(150))
+    outlabels = ('speech', 'music')
+    model_fname = 'keras_speech_music_cnn.hdf5'
 
 class SpeechMusicNoise(Vad):
-    def __init__(self):
-        p = os.path.dirname(os.path.realpath(__file__)) + '/'
-        self.nn = keras.models.load_model(p + 'keras_speech_music_noise_cnn.hdf5', compile=False)
-        self.outlabels = ('speech', 'music', 'noise')
-    def _decode(self, rawpred):
-        return viterbi_decoding(np.log(rawpred), diag_trans_exp(150, 3))
+    outlabels = ('speech', 'music', 'noise')
+    model_fname = 'keras_speech_music_noise_cnn.hdf5'
 
+
+  
     
 class Segmenter:
     def __init__(self, vad_engine='sm', detect_gender=True, ffmpeg='ffmpeg'):
