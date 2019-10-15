@@ -80,38 +80,6 @@ def _get_patches(mspec, w, step):
     return data, finite
 
 
-# def _speechzic(nn, patches, finite_patches, vad):
-#     ret = []
-#     for lab, start, stop in _binidx2seglist(vad):
-#         if lab == 0:
-#             # no energy
-#             ret.append(('NOACTIVITY', start, stop))
-#             continue
-#         #print(start, stop)
-#         rawpred = nn.predict(patches[start:stop, :])
-#         rawpred[finite_patches[start:stop] == False, :] = 0.5
-#         pred = viterbi_decoding(np.log(rawpred), log_trans_exp(150))
-#         for lab2, start2, stop2 in _binidx2seglist(pred):
-#             ret.append((['Speech', 'Music'][int(lab2)], start2+start, stop2+start))
-#     return ret
-
-
-# def _speechzicnoise(nn, patches, finite_patches, vad):
-#     ret = []
-#     for lab, start, stop in _binidx2seglist(vad):
-#         if lab == 0:
-#             # no energy
-#             ret.append(('noEnergy', start, stop))
-#             continue
-#         #print(start, stop)
-#         rawpred = nn.predict(patches[start:stop, :])
-#         rawpred[finite_patches[start:stop] == False, :] = 0.5
-#         pred = viterbi_decoding(np.log(rawpred), diag_trans_exp(150, 3))
-#         for lab2, start2, stop2 in _binidx2seglist(pred):
-#             ret.append((['speech', 'music', 'noise'][int(lab2)], start2+start, stop2+start))
-#     return ret
-
-
 def _gender(nn, patches, finite_patches, speechzicseg):
     ret = []
     for lab, start, stop in speechzicseg:
@@ -207,23 +175,40 @@ class SpeechMusicNoise(Vad):
 
     
 class Segmenter:
-    def __init__(self, vad_engine='sm'):
+    def __init__(self, vad_engine='sm', detect_gender=True, ffmpeg='ffmpeg'):
         """
         Load neural network models
-        vad_engine can be 'sm' (speech/music) or 'smn' (speech/music/noise)
+        
+        Input:
+
+        'vad_engine' can be 'sm' (speech/music) or 'smn' (speech/music/noise)
                 'sm' was used in the results presented in ICASSP 2017 paper
                         and in MIREX 2018 challenge submission
                 'smn' has been implemented more recently and has not been evaluated in papers
-        """
-        p = os.path.dirname(os.path.realpath(__file__)) + '/'
-        self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5', compile=False)
+        
+        'detect_gender': if False, speech excerpts are return labelled as 'speech'
+                if True, speech excerpts are splitted into 'male' and 'female' segments
+        """      
+
+        # test ffmpeg installation
+        if shutil.which(ffmpeg) is None:
+            raise(Exception("""ffmpeg program not found"""))
+        self.ffmpeg = ffmpeg
+
+        # select speech/music or speech/music/noise voice activity detection engine
         assert vad_engine in ['sm', 'smn']
         if vad_engine == 'sm':
             self.vad = SpeechMusic()
         elif vad_engine == 'smn':
             self.vad = SpeechMusicNoise()
 
-    
+        # load gender detection NN if required
+        assert detect_gender in [True, False]
+        self.detect_gender = detect_gender
+        if detect_gender:
+            p = os.path.dirname(os.path.realpath(__file__)) + '/'
+            self.gendernn = keras.models.load_model(p + 'keras_male_female_cnn.hdf5', compile=False)    
+
     def segmentwav(self, wavname):
         """
         do segmentation
@@ -247,17 +232,11 @@ class Segmenter:
 
         # perform voice activity detection
         speech_seg = self.vad(mspec, vad, difflen)
-        
-        # # perform speech/music segmentation using only 21 MFC coefficients
-        # data21, finite = _get_patches(mspec[:, :21].copy(), 68, 2)
-        # if difflen > 0:
-        #     data21 = data21[:-int(difflen/2), :, :]
-        #     finite = finite[:-int(difflen/2)]
-        # assert len(data21) == len(vad), (len(data21), len(vad))
-        # assert len(finite) == len(data21), (len(data21), len(finite))
-        # szseg = _speechzic(self.sznn, data21, finite, vad)
+        if not self.detect_gender:
+            # TODO: OFFSET MANAGEMENT
+            return [(lab, start * .02, stop * .02) for lab, start, stop in speech_seg]
 
-        
+        # perform gender segmentation on 'speech' labelled segments
         data, finite = _get_patches(mspec, 68, 2)
         if difflen > 0:
             data = data[:-int(difflen/2), :, :]
@@ -266,21 +245,17 @@ class Segmenter:
         # TODO: OFFSET MANAGEMENT
         return [(lab, start * .02, stop * .02) for lab, start, stop in genderseg]
 
-    def __call__(self, medianame, ffmpeg='ffmpeg', tmpdir=None):
+    def __call__(self, medianame, tmpdir=None):
         """
         do segmentation on any kind on media file, including urls
         slower than segmentwav method
         """
-
-        # TODO: move this to init
-        if shutil.which(ffmpeg) is None:
-            raise(Exception("""ffmpeg program not found"""))
         
         base, _ = os.path.splitext(os.path.basename(medianame))
 
         with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
             tmpwav = tmpdirname + '/' + base + '.wav'
-            args = [ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1', tmpwav]
+            args = [self.ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1', tmpwav]
             p = Popen(args, stdout=PIPE, stderr=PIPE)
             output, error = p.communicate()
             assert p.returncode == 0, error
