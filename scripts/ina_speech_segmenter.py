@@ -26,7 +26,7 @@
 import argparse
 import glob
 import os
-import distutils
+import distutils.util
 import warnings
 
 # TODO
