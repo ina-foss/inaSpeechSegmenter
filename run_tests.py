@@ -69,7 +69,21 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         ret = os.system('CUDA_VISIBLE_DEVICES="" ./scripts/ina_speech_segmenter.py -i ./media/0021.mp3 -o ./')
         self.assertEqual(ret, 0, 'ina_speech_segmenter returned error code %d' % ret)
 
-        
+    def test_startsec(self):
+        # test start_sec argument
+        seg = Segmenter()
+        start_sec = 2.
+        for lab, start, stop in seg('./media/musanmix.mp3', start_sec=start_sec):
+            self.assertGreaterEqual(start, start_sec)
+            self.assertGreaterEqual(stop, start_sec)
+
+    def test_stopsec(self):
+        # test stop_sec argument
+        seg = Segmenter()
+        stop_sec = 5.
+        for lab, start, stop in seg('./media/musanmix.mp3', stop_sec=stop_sec):
+            self.assertLessEqual(stop, stop_sec)
+            self.assertLessEqual(start, stop_sec)
         
 if __name__ == '__main__':
     unittest.main()

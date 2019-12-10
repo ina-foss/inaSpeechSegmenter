@@ -216,7 +216,7 @@ class Segmenter:
             self.gender = Gender()
             
 
-    def segmentwav(self, wavname):
+    def segmentwav(self, wavname, start_sec):
         """
         do segmentation
         require input corresponding to wav file sampled at 16000Hz
@@ -251,24 +251,44 @@ class Segmenter:
             lseg = self.gender(mspec, lseg, difflen)
 
         # TODO: OFFSET MANAGEMENT
-        return [(lab, start * .02, stop * .02) for lab, start, stop in lseg]
+        return [(lab, start_sec + start * .02, start_sec + stop * .02) for lab, start, stop in lseg]
 
 
-    def __call__(self, medianame, tmpdir=None):
+    def __call__(self, medianame, tmpdir=None, start_sec=None, stop_sec=None):
         """
-        do segmentation on any kind on media file, including urls
-        slower than segmentwav method
+        Return segmentation of a given file
+                * convert file to wav 16k mono with ffmpeg
+                * call NN segmentation procedures
+        * media_name: path to the media to be processed (including remote url)
+                may include any format supported by ffmpeg
+        * tmpdir: allow to define a custom path for storing temporary files
+                fast read/write HD are a good choice
+        * start_sec (seconds): sound stream before start_sec won't be processed
+        * stop_sec (seconds): sound stream after stop_sec won't be processed
         """
         
         base, _ = os.path.splitext(os.path.basename(medianame))
 
         with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
+            # build ffmpeg command line
             tmpwav = tmpdirname + '/' + base + '.wav'
-            args = [self.ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1', tmpwav]
+            args = [self.ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1']
+            if start_sec is None:
+                start_sec = 0
+            else:
+                args += ['-ss', '%f' % start_sec]
+                
+            if stop_sec is not None:
+                args += ['-to', '%f' % stop_sec]
+            args += [tmpwav]
+
+            # launch ffmpeg
             p = Popen(args, stdout=PIPE, stderr=PIPE)
             output, error = p.communicate()
             assert p.returncode == 0, error
-            return self.segmentwav(tmpwav)
+            
+            # do segmentation
+            return self.segmentwav(tmpwav, start_sec)
 
 def seg2csv(lseg, fout=None):
     df = pd.DataFrame.from_records(lseg, columns=['labels', 'start', 'stop'])
