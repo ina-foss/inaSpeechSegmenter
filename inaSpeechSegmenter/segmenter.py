@@ -141,16 +141,25 @@ class DnnSegmenter:
             
         assert len(finite) == len(patches), (len(patches), len(finite))
             
+        batch = []
+        for lab, start, stop in lseg:
+            if lab == self.inlabel:
+                batch.append(patches[start:stop, :])
+
+        batch = np.concatenate(batch)
+        rawpred = self.nn.predict(batch)
+
         ret = []
         for lab, start, stop in lseg:
             if lab != self.inlabel:
                 ret.append((lab, start, stop))
                 continue
 
-            rawpred = self.nn.predict(patches[start:stop, :])
-            rawpred[finite[start:stop] == False, :] = 0.5
-
-            pred = viterbi_decoding(np.log(rawpred), diag_trans_exp(self.viterbi_arg, len(self.outlabels)))
+            l = stop - start
+            r = rawpred[:l] 
+            rawpred = rawpred[l:]
+            r[finite[start:stop] == False, :] = 0.5
+            pred = viterbi_decoding(np.log(r), diag_trans_exp(self.viterbi_arg, len(self.outlabels)))
             for lab2, start2, stop2 in _binidx2seglist(pred):
                 ret.append((self.outlabels[int(lab2)], start2+start, stop2+start))            
         return ret
