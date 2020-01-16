@@ -146,8 +146,9 @@ class DnnSegmenter:
             if lab == self.inlabel:
                 batch.append(patches[start:stop, :])
 
-        batch = np.concatenate(batch)
-        rawpred = self.nn.predict(batch)
+        if len(batch) > 0:
+            batch = np.concatenate(batch)
+            rawpred = self.nn.predict(batch)
 
         ret = []
         for lab, start, stop in lseg:
