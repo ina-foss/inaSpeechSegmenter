@@ -147,3 +147,6 @@ This work was realized in the framework of MeMAD project.
 https://memad.eu/
 MeMAD is an EU funded H2020 research project.
 It has received funding from the European Union’s Horizon 2020 research and innovation programme under grant agreement No 780069.
+
+Some optimization within inaSpeechSegmenter code were realized by Cyril Lashkevich
+https://github.com/notorca
