@@ -13,7 +13,7 @@ inaSpeechSegmenter has been designed in order to perform [large-scale gender equ
 
 ## Installation
 
-inaSpeechSegmenter is a framework in python 3.
+inaSpeechSegmenter is a framework in python 3. Only python versions greater or equal to 3.6 are supported.
 It can be installed using the following procedure:
 
 ### Prerequisites
