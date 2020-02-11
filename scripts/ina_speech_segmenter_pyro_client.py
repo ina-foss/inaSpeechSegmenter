@@ -36,6 +36,11 @@ def myprocess(in_fname, out_fname):
     
     if os.path.isfile(out_fname):
         return 'already done'
+
+    dname = os.path.dirname(out_fname)
+    if not os.path.isdir(dname):
+        os.makedirs(dname)
+
     results = g(in_fname)
     seg2csv(results, out_fname)
     return 0
