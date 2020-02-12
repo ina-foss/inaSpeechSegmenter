@@ -1,7 +1,18 @@
-# Distrib
-FROM nvidia/cuda:10.0-cudnn7-devel
+# Build command bellow:
+# docker build --build-arg username=$USER --build-arg uid=`id -u $USER` .
 
-RUN apt-get -y update
-RUN apt-get install -y ffmpeg python3 python-virtualenv python3-pip
+FROM tensorflow/tensorflow:2.0.1-gpu-py3
 
-RUN pip3 install tensorflow-gpu inaSpeechSegmenter
+RUN apt-get update
+RUN apt-get install -y ffmpeg
+
+RUN pip install inaspeechsegmenter
+
+# $USER
+ARG username
+# id -u $USER
+ARG uid
+
+RUN useradd --uid $uid -U -m  -s /bin/bash $username
+USER $username
+ENV HOME /home/$username
