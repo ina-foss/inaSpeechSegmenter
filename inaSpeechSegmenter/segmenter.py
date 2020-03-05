@@ -56,7 +56,12 @@ def _wav2feats(wavname):
     assert read_framerate == 16000
     assert sampwidth == 2
     sig *= (2**(15-sampwidth))
-    _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
+
+    with warnings.catch_warnings() as w:
+        # ignore warnings resulting from empty signals parts
+        warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning, module='sidekit')
+        _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
+
     return mspec, loge
 
 
