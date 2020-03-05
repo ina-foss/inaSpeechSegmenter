@@ -26,7 +26,9 @@
 
 import unittest
 import os
+import warnings
 from inaSpeechSegmenter import Segmenter
+from inaSpeechSegmenter.segmenter import _wav2feats
 
 class TestInaSpeechSegmenter(unittest.TestCase):
     
@@ -38,6 +40,13 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         # tensorflow installation
         seg = Segmenter()
         ret = seg('./media/musanmix.mp3')
+
+    def test_silence_features(self):
+        # test empty signal do not result in warnings
+        with warnings.catch_warnings(record=True) as w:
+            ret = _wav2feats('./media/silence2sec.wav')
+            assert len(w) == 0, [str(e) for e in w]
+
         
     def test_short(self):
         seg = Segmenter(vad_engine='sm')
