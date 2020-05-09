@@ -3,7 +3,7 @@
 
 # The MIT License
 
-# Copyright (c) 2018 Ina (David Doukhan - http://www.ina.fr/)
+# Copyright (c) 2018 Ina (David Doukhan, Eliott Lechapt - http://www.ina.fr/)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,9 @@ import tempfile
 from subprocess import Popen, PIPE
 import numpy as np
 import keras
+#from keras import backend as KB
+from .thread_returning import ThreadReturning
+
 import shutil
 import pandas as pd
 import warnings
@@ -61,8 +64,16 @@ def _wav2feats(wavname):
         # ignore warnings resulting from empty signals parts
         warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning, module='sidekit')
         _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
+        
+    # Management of short duration segments
+    difflen = 0
+    if len(loge) < 68:
+        difflen = 68 - len(loge)
+        warnings.warn("media %s duration is short. Robust results require length of at least 720 milliseconds" %wavname)
+        mspec = np.concatenate((mspec, np.ones((difflen, 24)) * np.min(mspec)))
+        #loge = np.concatenate((loge, np.ones(difflen) * np.min(mspec)))
 
-    return mspec, loge
+    return mspec, loge, difflen
 
 
 def _energy_activity(loge, ratio=0.03):
@@ -217,6 +228,9 @@ class Segmenter:
             raise(Exception("""ffmpeg program not found"""))
         self.ffmpeg = ffmpeg
 
+#        self.graph = KB.get_session().graph # To prevent the issue of keras with tensorflow backend for async tasks
+
+        
         # select speech/music or speech/music/noise voice activity detection engine
         assert vad_engine in ['sm', 'smn']
         if vad_engine == 'sm':
@@ -229,24 +243,16 @@ class Segmenter:
         self.detect_gender = detect_gender
         if detect_gender:
             self.gender = Gender()
-            
 
-    def segmentwav(self, wavname, start_sec):
+
+    def segment_feats(self, mspec, loge, difflen, start_sec):
         """
         do segmentation
         require input corresponding to wav file sampled at 16000Hz
         with a single channel
         """
-        # Get Mel Power Spectrogram and Energy
-        mspec, loge = _wav2feats(wavname)
 
-        # Management of short duration segments
-        difflen = 0
-        if len(loge) < 68:
-            difflen = 68 - len(loge)
-            warnings.warn("media %s duration is short. Robust results require length of at least 720 milliseconds" %wavname)
-            mspec = np.concatenate((mspec, np.ones((difflen, 24)) * np.min(mspec)))
-            #loge = np.concatenate((loge, np.ones(difflen) * np.min(mspec)))
+
 
 
         # perform energy-based activity detection
@@ -282,30 +288,57 @@ class Segmenter:
         * stop_sec (seconds): sound stream after stop_sec won't be processed
         """
         
-        base, _ = os.path.splitext(os.path.basename(medianame))
+        mspec, loge, difflen = media2feats(medianame, tmpdir, start_sec, stop_sec, self.ffmpeg)
+        if start_sec is None:
+            start_sec = 0
+        # do segmentation   
+        return self.segment_feats(mspec, loge, difflen, start_sec)
 
-        with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
-            # build ffmpeg command line
-            tmpwav = tmpdirname + '/' + base + '.wav'
-            args = [self.ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1']
-            if start_sec is None:
-                start_sec = 0
-            else:
-                args += ['-ss', '%f' % start_sec]
-                
-            if stop_sec is not None:
-                args += ['-to', '%f' % stop_sec]
-            args += [tmpwav]
-
-            # launch ffmpeg
-            p = Popen(args, stdout=PIPE, stderr=PIPE)
-            output, error = p.communicate()
-            assert p.returncode == 0, error
-            
-            # do segmentation
-            return self.segmentwav(tmpwav, start_sec)
-
+    def batch_process(self, linput, loutput, verbose=False):
+        fg = featGenerator(linput.copy())
+        for i, (mspec, loge, difflen) in enumerate(fg):
+            if verbose == True:
+                print(i, linput[i], loutput[i])
+            lseg = self.segment_feats(mspec, loge, difflen, 0)
+            seg2csv(lseg, loutput[i])
+        
 def seg2csv(lseg, fout=None):
     df = pd.DataFrame.from_records(lseg, columns=['labels', 'start', 'stop'])
     df.to_csv(fout, sep='\t', index=False)
 
+
+def media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg):
+    base, _ = os.path.splitext(os.path.basename(medianame))
+
+    with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
+        # build ffmpeg command line
+        tmpwav = tmpdirname + '/' + base + '.wav'
+        args = [ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1']
+        if start_sec is None:
+            start_sec = 0
+        else:
+            args += ['-ss', '%f' % start_sec]
+
+        if stop_sec is not None:
+            args += ['-to', '%f' % stop_sec]
+        args += [tmpwav]
+
+        # launch ffmpeg
+        p = Popen(args, stdout=PIPE, stderr=PIPE)
+        output, error = p.communicate()
+        assert p.returncode == 0, error
+
+        # Get Mel Power Spectrogram and Energy
+        return _wav2feats(tmpwav)
+
+    
+def featGenerator(flist, tmpdir=None, ffmpeg='ffmpeg'):
+    thread = ThreadReturning(target = media2feats, args=[flist.pop(0), tmpdir, None, None, ffmpeg])
+    thread.start()
+    while len(flist) > 0:
+        ret = thread.join()
+        thread = ThreadReturning(target = media2feats, args=[flist.pop(0), tmpdir, None, None, ffmpeg])
+        thread.start()
+        yield ret
+    ret = thread.join()
+    yield ret
