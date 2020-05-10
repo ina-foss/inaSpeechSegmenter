@@ -32,12 +32,26 @@ import pandas as pd
 @Pyro4.expose
 class GenderJobServer(object):
     def __init__(self, df):
-        self.jobs = zip(df.source_path, df.dest_path)
+        self.lsource = list(df.source_path)
+        self.ldest = list(df.dest_path)
         self.i = 0
+        
     def get_job(self, msg):
         print('job %d: %s' % (self.i, msg))
         self.i += 1
-        return next(self.jobs)
+        return (self.lsource.pop(0), self.ldest.pop(0))
+
+    def get_njobs(self, msg, nbjobs=20):
+        print('jobs %d-%d: %s' % (self.i, self.i + nbjobs, msg))
+        ret = (self.lsource[:nbjobs], self.ldest[:nbjobs])
+        if len(ret[0]) == 0:
+            print('All jobs dispatched')
+        self.lsource = self.lsource[nbjobs:]
+        self.ldest = self.ldest[nbjobs:]
+        self.i += nbjobs
+        return ret
+
+
 
 if __name__ == '__main__':
     # full name of the host to be used by remote clients

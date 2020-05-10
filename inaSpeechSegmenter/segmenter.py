@@ -265,10 +265,16 @@ class Segmenter:
 
     
     def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2.):
+        if verbose:
+            print('batch_processing %d files' % len(linput))
         lmsg = []
         fg = featGenerator(linput.copy(), loutput.copy(), tmpdir, self.ffmpeg, skipifexist, nbtry, trydelay)
+        i = 0
         for feats, msg in fg:
             lmsg += msg
+            i += len(msg)
+            if verbose:
+                print('%d/%d' % (i, len(linput)), msg)
             if feats is None:
                 break
             mspec, loge, difflen = feats

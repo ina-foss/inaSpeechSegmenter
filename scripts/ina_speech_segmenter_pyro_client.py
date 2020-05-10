@@ -28,22 +28,9 @@ import Pyro4
 import sys
 import os
 import socket
-import time
 
-from inaSpeechSegmenter import Segmenter, seg2csv
+from inaSpeechSegmenter import Segmenter
 
-def myprocess(in_fname, out_fname):
-    
-    if os.path.isfile(out_fname):
-        return 'already done'
-
-    dname = os.path.dirname(out_fname)
-    if not os.path.isdir(dname):
-        os.makedirs(dname)
-
-    results = g(in_fname)
-    seg2csv(results, out_fname)
-    return 0
 
 if __name__ == '__main__':
     dname = os.path.dirname(os.path.realpath(__file__))
@@ -53,21 +40,14 @@ if __name__ == '__main__':
     uri = sys.argv[1]
     jobserver = Pyro4.Proxy(uri)
 
-    b = time.time()
     ret = -1
     outname = 'init'
     
     g = Segmenter()
     
     while True:
-        url, outname = jobserver.get_job('%s %f %s %s' % (hostname, time.time() - b, ret, outname))
+        lsrc, ldst = jobserver.get_njobs('%s %s' % (hostname, ret))
             
-        b = time.time()
-
-        print(url, outname)
+        print(lsrc, ldst)
         
-        try:
-            ret =  myprocess(url, outname)
-        except:
-            print("Unexpected error:", sys.exc_info()[0])
-            ret = 'error'
+        ret =  g.batch_process(lsrc, ldst, skipifexist=True, nbtry=3)
