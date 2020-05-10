@@ -241,7 +241,6 @@ class Segmenter:
         if self.detect_gender:
             lseg = self.gender(mspec, lseg, difflen)
 
-        # TODO: OFFSET MANAGEMENT
         return [(lab, start_sec + start * .02, start_sec + stop * .02) for lab, start, stop in lseg]
 
 
@@ -264,21 +263,30 @@ class Segmenter:
         # do segmentation   
         return self.segment_feats(mspec, loge, difflen, start_sec)
 
-    def batch_process(self, linput, loutput, verbose=False):
-        fg = featGenerator(linput.copy())
-        for i, (mspec, loge, difflen) in enumerate(fg):
-            if verbose == True:
-                print(i, linput[i], loutput[i])
+    
+    def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2.):
+        lmsg = []
+        fg = featGenerator(linput.copy(), loutput.copy(), tmpdir, self.ffmpeg, skipifexist, nbtry, trydelay)
+        for feats, msg in fg:
+            lmsg += msg
+            if feats is None:
+                break
+            mspec, loge, difflen = feats
+            #if verbose == True:
+            #    print(i, linput[i], loutput[i])
+            b = time.time()
             lseg = self.segment_feats(mspec, loge, difflen, 0)
-            seg2csv(lseg, loutput[i])
-        
+            seg2csv(lseg, loutput[len(lmsg) -1])
+            lmsg[-1] += ' ' + str(time.time() -b)
+        return lmsg
+
 def seg2csv(lseg, fout=None):
     df = pd.DataFrame.from_records(lseg, columns=['labels', 'start', 'stop'])
     df.to_csv(fout, sep='\t', index=False)
 
 
 
-def medialist2feat(lin, lout, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, nbtry=1, trydelay=2.):
+def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
     """
     To be used when processing batches
     if resulting file exists, it is skipped
@@ -289,7 +297,8 @@ def medialist2feat(lin, lout, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, n
     while ret is None and len(lin) > 0:
         src = lin.pop(0)
         dst = lout.pop(0)
-
+#        print('popping', src)
+        
         # if file exists: skipp
         if skipifexist and os.path.exists(dst):
             msg.append('%s already exists' % dst)
@@ -303,7 +312,7 @@ def medialist2feat(lin, lout, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, n
         itry = 0
         while ret is None and itry < nbtry:
             try:
-                ret = media2feats(src, tmpdir, start_sec, stop_sec, ffmpeg)
+                ret = media2feats(src, tmpdir, None, None, ffmpeg)
             except:
                 itry += 1
                 errmsg = sys.exc_info()[0]
@@ -311,17 +320,25 @@ def medialist2feat(lin, lout, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, n
                     time.sleep(random.random() * trydelay)
         if ret is None:
             msg.append('%s error: %s' % (dst, errmsg))
+        else:
+            msg.append('%s ok' % dst)
             
-    return feat, ret + ['%s ok' % dst]
+    return ret, msg
+
     
-    
-def featGenerator(flist, tmpdir=None, ffmpeg='ffmpeg'):
-    thread = ThreadReturning(target = media2feats, args=[flist.pop(0), tmpdir, None, None, ffmpeg])
+def featGenerator(ilist, olist, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, nbtry=1, trydelay=2.):
+#    print('init feat gen', len(ilist))
+    thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay])
     thread.start()
-    while len(flist) > 0:
-        ret = thread.join()
-        thread = ThreadReturning(target = media2feats, args=[flist.pop(0), tmpdir, None, None, ffmpeg])
+    while True:
+        ret, msg = thread.join()
+#        print('join done', len(ilist))
+#        print('new list', ilist)
+        #ilist = ilist[len(msg):]
+        #olist = olist[len(msg):]
+        if len(ilist) == 0:
+            break
+        thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay])
         thread.start()
-        yield ret
-    ret = thread.join()
-    yield ret
+        yield ret, msg
+    yield ret, msg
