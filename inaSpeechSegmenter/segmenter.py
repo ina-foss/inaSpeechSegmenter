@@ -29,7 +29,6 @@ import sys
 
 import numpy as np
 import keras
-#from keras import backend as KB
 from .thread_returning import ThreadReturning
 
 import shutil
@@ -279,7 +278,7 @@ def seg2csv(lseg, fout=None):
 
 
 
-def medialist2feat(lin, lout, tmpdir=None, ffmpeg='ffmpeg', nbtry=1, trydelay=2.):
+def medialist2feat(lin, lout, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, nbtry=1, trydelay=2.):
     """
     To be used when processing batches
     if resulting file exists, it is skipped
@@ -292,7 +291,7 @@ def medialist2feat(lin, lout, tmpdir=None, ffmpeg='ffmpeg', nbtry=1, trydelay=2.
         dst = lout.pop(0)
 
         # if file exists: skipp
-        if os.path.exists(dst):
+        if skipifexist and os.path.exists(dst):
             msg.append('%s already exists' % dst)
             continue
 
@@ -308,7 +307,8 @@ def medialist2feat(lin, lout, tmpdir=None, ffmpeg='ffmpeg', nbtry=1, trydelay=2.
             except:
                 itry += 1
                 errmsg = sys.exc_info()[0]
-                time.sleep(random.random() * trydelay)
+                if itry != nbtry:
+                    time.sleep(random.random() * trydelay)
         if ret is None:
             msg.append('%s error: %s' % (dst, errmsg))
             
