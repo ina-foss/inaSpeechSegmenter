@@ -3,7 +3,7 @@
 
 # The MIT License
 
-# Copyright (c) 2018 Ina (David Doukhan, Eliott Lechapt - http://www.ina.fr/)
+# Copyright (c) 2018 Ina (David Doukhan - http://www.ina.fr/)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,8 +25,8 @@
 
 
 import os
-import tempfile
-from subprocess import Popen, PIPE
+import sys
+
 import numpy as np
 import keras
 #from keras import backend as KB
@@ -34,46 +34,17 @@ from .thread_returning import ThreadReturning
 
 import shutil
 import pandas as pd
-import warnings
+import time
+import random
 
 from skimage.util import view_as_windows as vaw
 
-os.environ['SIDEKIT'] = 'theano=false,libsvm=false'
-from sidekit.frontend.io import read_wav
-from sidekit.frontend.features import mfcc
 
 from pyannote.algorithms.utils.viterbi import viterbi_decoding
 from .viterbi_utils import pred2logemission, diag_trans_exp, log_trans_exp
 
+from .features import media2feats
 
-def _wav2feats(wavname):
-    """ 
-    """
-    ext = os.path.splitext(wavname)[-1]
-    assert ext.lower() == '.wav' or ext.lower() == '.wave'
-    sig, read_framerate, sampwidth = read_wav(wavname)
-    shp = sig.shape
-    # wav should contain a single channel
-    assert len(shp) == 1 or (len(shp) == 2 and shp[1] == 1)
-    # wav sample rate should be 16000 Hz
-    assert read_framerate == 16000
-    assert sampwidth == 2
-    sig *= (2**(15-sampwidth))
-
-    with warnings.catch_warnings() as w:
-        # ignore warnings resulting from empty signals parts
-        warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning, module='sidekit')
-        _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
-        
-    # Management of short duration segments
-    difflen = 0
-    if len(loge) < 68:
-        difflen = 68 - len(loge)
-        warnings.warn("media %s duration is short. Robust results require length of at least 720 milliseconds" %wavname)
-        mspec = np.concatenate((mspec, np.ones((difflen, 24)) * np.min(mspec)))
-        #loge = np.concatenate((loge, np.ones(difflen) * np.min(mspec)))
-
-    return mspec, loge, difflen
 
 
 def _energy_activity(loge, ratio=0.03):
@@ -307,30 +278,42 @@ def seg2csv(lseg, fout=None):
     df.to_csv(fout, sep='\t', index=False)
 
 
-def media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg):
-    base, _ = os.path.splitext(os.path.basename(medianame))
 
-    with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
-        # build ffmpeg command line
-        tmpwav = tmpdirname + '/' + base + '.wav'
-        args = [ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1']
-        if start_sec is None:
-            start_sec = 0
-        else:
-            args += ['-ss', '%f' % start_sec]
+def medialist2feat(lin, lout, tmpdir=None, ffmpeg='ffmpeg', nbtry=1, trydelay=2.):
+    """
+    To be used when processing batches
+    if resulting file exists, it is skipped
+    in case of remote files, access is tried nbtry times
+    """
+    ret = None
+    msg = []
+    while ret is None and len(lin) > 0:
+        src = lin.pop(0)
+        dst = lout.pop(0)
 
-        if stop_sec is not None:
-            args += ['-to', '%f' % stop_sec]
-        args += [tmpwav]
+        # if file exists: skipp
+        if os.path.exists(dst):
+            msg.append('%s already exists' % dst)
+            continue
 
-        # launch ffmpeg
-        p = Popen(args, stdout=PIPE, stderr=PIPE)
-        output, error = p.communicate()
-        assert p.returncode == 0, error
-
-        # Get Mel Power Spectrogram and Energy
-        return _wav2feats(tmpwav)
-
+        # create storing directory if required
+        dname = os.path.dirname(dst)
+        if not os.path.isdir(dname):
+            os.makedirs(dname)
+        
+        itry = 0
+        while ret is None and itry < nbtry:
+            try:
+                ret = media2feats(src, tmpdir, start_sec, stop_sec, ffmpeg)
+            except:
+                itry += 1
+                errmsg = sys.exc_info()[0]
+                time.sleep(random.random() * trydelay)
+        if ret is None:
+            msg.append('%s error: %s' % (dst, errmsg))
+            
+    return feat, ret + ['%s ok' % dst]
+    
     
 def featGenerator(flist, tmpdir=None, ffmpeg='ffmpeg'):
     thread = ThreadReturning(target = media2feats, args=[flist.pop(0), tmpdir, None, None, ffmpeg])

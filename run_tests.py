@@ -28,7 +28,7 @@ import unittest
 import os
 import warnings
 from inaSpeechSegmenter import Segmenter
-from inaSpeechSegmenter.segmenter import _wav2feats
+from inaSpeechSegmenter.features import _wav2feats
 import filecmp
 import pandas as pd
 import numpy as np
@@ -90,8 +90,10 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-sm-gender.csv'))
 
     def test_program(self):
-        ret = os.system('CUDA_VISIBLE_DEVICES="" ./scripts/ina_speech_segmenter.py -i ./media/0021.mp3 -o ./')
-        self.assertEqual(ret, 0, 'ina_speech_segmenter returned error code %d' % ret)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            ret = os.system('CUDA_VISIBLE_DEVICES="" ./scripts/ina_speech_segmenter.py -i ./media/0021.mp3 -o %s' % tmpdirname)
+            self.assertEqual(ret, 0, 'ina_speech_segmenter returned error code %d' % ret)
+            self.assertTrue(os.path.isfile('%s/%s' % (tmpdirname, '0021.csv')))
 
     def test_startsec(self):
         # test start_sec argument
