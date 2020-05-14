@@ -336,7 +336,7 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
                 if itry != nbtry:
                     time.sleep(random.random() * trydelay)
         if ret is None:
-            msg.append((dst, 2, 'error: ' + errmsg))
+            msg.append((dst, 2, 'error: ' + str(errmsg)))
         else:
             msg.append((dst, 0, 'ok'))
             
