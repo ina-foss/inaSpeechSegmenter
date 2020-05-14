@@ -43,7 +43,8 @@ if __name__ == '__main__':
     ret = -1
     outname = 'init'
     
-    g = Segmenter()
+    # batch size set at 1024. Use lower values with small gpus
+    g = Segmenter(1024)
     
     while True:
         lsrc, ldst = jobserver.get_njobs('%s %s' % (hostname, ret))

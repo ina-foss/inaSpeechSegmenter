@@ -101,11 +101,12 @@ class DnnSegmenter:
         other labels will stay unchanged
     * outlabels: the labels associated the output of neural network models
     """
-    def __init__(self):
+    def __init__(self, batch_size):
         # load the DNN model
         p = os.path.dirname(os.path.realpath(__file__)) + '/'
         self.nn = keras.models.load_model(p + self.model_fname, compile=False)        
-    
+        self.batch_size = batch_size
+        
     def __call__(self, mspec, lseg, difflen = 0):
         """
         *** input
@@ -134,7 +135,7 @@ class DnnSegmenter:
 
         if len(batch) > 0:
             batch = np.concatenate(batch)
-            rawpred = self.nn.predict(batch)
+            rawpred = self.nn.predict(batch, batch_size=self.batch_size)
 
         ret = []
         for lab, start, stop in lseg:
@@ -178,7 +179,7 @@ class Gender(DnnSegmenter):
 
 
 class Segmenter:
-    def __init__(self, vad_engine='smn', detect_gender=True, ffmpeg='ffmpeg'):
+    def __init__(self, vad_engine='smn', detect_gender=True, ffmpeg='ffmpeg', batch_size=32):
         """
         Load neural network models
         
@@ -204,15 +205,15 @@ class Segmenter:
         # select speech/music or speech/music/noise voice activity detection engine
         assert vad_engine in ['sm', 'smn']
         if vad_engine == 'sm':
-            self.vad = SpeechMusic()
+            self.vad = SpeechMusic(batch_size)
         elif vad_engine == 'smn':
-            self.vad = SpeechMusicNoise()
+            self.vad = SpeechMusicNoise(batch_size)
 
         # load gender detection NN if required
         assert detect_gender in [True, False]
         self.detect_gender = detect_gender
         if detect_gender:
-            self.gender = Gender()
+            self.gender = Gender(batch_size)
 
 
     def segment_feats(self, mspec, loge, difflen, start_sec):
@@ -267,6 +268,9 @@ class Segmenter:
     def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2.):
         if verbose:
             print('batch_processing %d files' % len(linput))
+
+        t_batch_start = time.time()
+        
         lmsg = []
         fg = featGenerator(linput.copy(), loutput.copy(), tmpdir, self.ffmpeg, skipifexist, nbtry, trydelay)
         i = 0
@@ -283,8 +287,15 @@ class Segmenter:
             b = time.time()
             lseg = self.segment_feats(mspec, loge, difflen, 0)
             seg2csv(lseg, loutput[len(lmsg) -1])
-            lmsg[-1] += ' ' + str(time.time() -b)
-        return lmsg
+            lmsg[-1] = (lmsg[-1][0], lmsg[-1][1], 'ok ' + str(time.time() -b))
+
+        t_batch_dur = time.time() - t_batch_start
+        nb_processed = len([e for e in lmsg if e[1] == '0'])
+        if nb_processed > 0:
+            avg = t_batch_dur / nb_processed
+        else:
+            avg = -1
+        return t_batch_dur, nb_processed, avg, lmsg
 
 def seg2csv(lseg, fout=None):
     df = pd.DataFrame.from_records(lseg, columns=['labels', 'start', 'stop'])
@@ -307,7 +318,7 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
         
         # if file exists: skipp
         if skipifexist and os.path.exists(dst):
-            msg.append('%s already exists' % dst)
+            msg.append((dst, 1, 'already exists'))
             continue
 
         # create storing directory if required
@@ -325,9 +336,9 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
                 if itry != nbtry:
                     time.sleep(random.random() * trydelay)
         if ret is None:
-            msg.append('%s error: %s' % (dst, errmsg))
+            msg.append((dst, 2, 'error: ' + errmsg))
         else:
-            msg.append('%s ok' % dst)
+            msg.append((dst, 0, 'ok'))
             
     return ret, msg
 

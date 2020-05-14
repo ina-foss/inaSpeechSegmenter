@@ -92,7 +92,7 @@ Details on the speech detection submodule can be found bellow:
 
 setup(
     name = "inaSpeechSegmenter",
-    version = "0.6.0",
+    version = "0.6.1",
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
     test_suite="run_tests.py",
