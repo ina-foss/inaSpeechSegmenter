@@ -44,11 +44,14 @@ if __name__ == '__main__':
     outname = 'init'
     
     # batch size set at 1024. Use lower values with small gpus
-    g = Segmenter(1024)
+    g = Segmenter(batch_size=1024)
     
     while True:
         lsrc, ldst = jobserver.get_njobs('%s %s' % (hostname, ret))
             
         print(lsrc, ldst)
+        if len(lsrc) == 0:
+            print('job list finished')
+            break
         
         ret =  g.batch_process(lsrc, ldst, skipifexist=True, nbtry=3)

@@ -290,7 +290,7 @@ class Segmenter:
             lmsg[-1] = (lmsg[-1][0], lmsg[-1][1], 'ok ' + str(time.time() -b))
 
         t_batch_dur = time.time() - t_batch_start
-        nb_processed = len([e for e in lmsg if e[1] == '0'])
+        nb_processed = len([e for e in lmsg if e[1] == 0])
         if nb_processed > 0:
             avg = t_batch_dur / nb_processed
         else:
