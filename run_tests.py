@@ -89,6 +89,14 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             self.assertTrue(filecmp.cmp(lout[0], lout[1]))
             self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-sm-gender.csv'))
 
+
+    def test_batch_not_exists(self):
+        seg = Segmenter(vad_engine='sm')
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            lout = [os.path.join(tmpdirname, '1.csv'), os.path.join(tmpdirname, '2.csv'), os.path.join(tmpdirname, '3.csv')]
+            ret = seg.batch_process(['./media/musanmix.mp3', './media/doesnotexists.mp3', '/sdfdsF/zefzef/sdf.pp'], lout)
+            self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-sm-gender.csv'))
+            
     def test_program(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
             ret = os.system('CUDA_VISIBLE_DEVICES="" ./scripts/ina_speech_segmenter.py -i ./media/0021.mp3 -o %s' % tmpdirname)
