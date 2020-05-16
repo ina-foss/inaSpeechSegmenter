@@ -31,10 +31,19 @@ import pandas as pd
 
 @Pyro4.expose
 class GenderJobServer(object):
-    def __init__(self, df):
+    def __init__(self, csvjobs):
+        self.set_jobs(csvjobs)
+
+    def set_jobs(self, csvjobs):
+        # csv configuration file with 2 columns: source_path, dest_path
+        df = pd.read_csv(csvjobs).sample(frac=1).reset_index(drop=True)
+        print('setting jobs')
+        print('random source & dest path:', df.source_path[0], ' ',df.dest_path[0])
+        print('number of files to process:', len(df))
         self.lsource = list(df.source_path)
         self.ldest = list(df.dest_path)
         self.i = 0
+        return '%s jobs have been set' % csvjobs
         
     def get_job(self, msg):
         print('job %d: %s' % (self.i, msg))
@@ -55,15 +64,10 @@ class GenderJobServer(object):
 
 if __name__ == '__main__':
     # full name of the host to be used by remote clients
-    Pyro4.config.HOST = sys.argv[1]
-    # csv configuration file with 2 columns: source_path, dest_path
-    df = pd.read_csv(sys.argv[2]).sample(frac=1).reset_index(drop=True)
-
-    print('random source & dest path:', df.source_path[0], ' ',df.dest_path[0])
-    print('number of files to process:', len(df))
-    
+    Pyro4.config.HOST = sys.argv[1]    
     
     daemon = Pyro4.Daemon()                # make a Pyro daemon\n",
-    uri = daemon.register(GenderJobServer(df))   # register the greeting maker as a Pyro object\n",
-    print("Ready. Object uri =", uri) 
+    uri = daemon.register(GenderJobServer(sys.argv[2]))   # register the greeting maker as a Pyro object\n",
+    print("Ready. Object uri =", uri)
     daemon.requestLoop()
+
