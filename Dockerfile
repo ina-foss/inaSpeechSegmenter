@@ -1,7 +1,7 @@
 # Build command bellow:
 # docker build --build-arg username=$USER --build-arg uid=`id -u $USER` .
 
-FROM tensorflow/tensorflow:2.0.1-gpu-py3
+FROM tensorflow/tensorflow:2.3.0-gpu-jupyter
 
 RUN apt-get update
 RUN apt-get install -y ffmpeg
