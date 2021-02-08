@@ -1,0 +1,10 @@
+source_path,dest_path
+my_source_1, my_dest_1
+my_source_1,my_dest_1
+my_source_1     ,my_dest_1   
+my_source_2, my_dest_2
+my_source_3, my_dest_3
+/my_/source_4, my_dest_4
+my_source_5,my_dest_5
+my_source_6, my_dest_6
+my_source_7, my_dest_7@@@!!

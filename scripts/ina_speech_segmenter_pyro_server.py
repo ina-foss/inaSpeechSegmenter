@@ -36,7 +36,10 @@ class GenderJobServer(object):
 
     def set_jobs(self, csvjobs):
         # csv configuration file with 2 columns: source_path, dest_path
-        df = pd.read_csv(csvjobs).sample(frac=1).reset_index(drop=True)
+        df = pd.read_csv(csvjobs)
+        df.source_path = df.source_path.str.strip()
+        df.dest_path = df.dest_path.str.strip()
+        df = df.drop_duplicates().sample(frac=1).reset_index(drop=True)
         print('setting jobs')
         print('random source & dest path:', df.source_path[0], ' ',df.dest_path[0])
         print('number of files to process:', len(df))

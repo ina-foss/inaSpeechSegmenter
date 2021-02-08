@@ -34,6 +34,8 @@ import pandas as pd
 import numpy as np
 import tempfile
 
+from scripts.ina_speech_segmenter_pyro_server import GenderJobServer
+
 class TestInaSpeechSegmenter(unittest.TestCase):
     
     def test_init(self):
@@ -126,6 +128,15 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         for lab, start, stop in seg('./media/musanmix.mp3', stop_sec=stop_sec):
             self.assertLessEqual(stop, stop_sec)
             self.assertLessEqual(start, stop_sec)
-        
+
+    def test_pyroserver(self):
+        gs = GenderJobServer('./media/pyroserver_test.csv')
+        lsrc, ldst = gs.get_njobs('')
+        self.assertEqual(len(lsrc), 7)
+        self.assertEqual(len(ldst), 7)
+        self.assertEqual(sorted(lsrc), ['/my_/source_4', 'my_source_1', 'my_source_2', 'my_source_3', 'my_source_5', 'my_source_6', 'my_source_7'])
+        self.assertEqual(sorted(ldst), ['my_dest_1', 'my_dest_2', 'my_dest_3', 'my_dest_4', 'my_dest_5', 'my_dest_6', 'my_dest_7@@@!!'])
+
+
 if __name__ == '__main__':
     unittest.main()
