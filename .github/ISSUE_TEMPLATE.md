@@ -10,6 +10,7 @@ Make sure you ran the unit tests before submitting an issue and tell us if and w
 - TensorFlow version:
 - Python version:
 - Running on GPU or CPU:
+- output of command nvidia-smi (if GPU is used)
 - CUDA/cuDNN version (if GPU is used):
 - Using Docker: 
 
