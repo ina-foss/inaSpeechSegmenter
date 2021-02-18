@@ -32,7 +32,6 @@ import keras
 from .thread_returning import ThreadReturning
 
 import shutil
-import pandas as pd
 import time
 import random
 
@@ -43,6 +42,7 @@ from pyannote.algorithms.utils.viterbi import viterbi_decoding
 from .viterbi_utils import pred2logemission, diag_trans_exp, log_trans_exp
 
 from .features import media2feats
+from .export_funcs import seg2csv, seg2textgrid
 
 
 
@@ -265,10 +265,18 @@ class Segmenter:
         return self.segment_feats(mspec, loge, difflen, start_sec)
 
     
-    def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2.):
+    def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2., output_format='csv'):
+        
         if verbose:
             print('batch_processing %d files' % len(linput))
 
+        if output_format == 'csv':
+            fexport = seg2csv
+        elif output_format == 'textgrid':
+            fexport = seg2textgrid
+        else:
+            raise NotImplementedError()
+            
         t_batch_start = time.time()
         
         lmsg = []
@@ -286,7 +294,7 @@ class Segmenter:
             #    print(i, linput[i], loutput[i])
             b = time.time()
             lseg = self.segment_feats(mspec, loge, difflen, 0)
-            seg2csv(lseg, loutput[len(lmsg) -1])
+            fexport(lseg, loutput[len(lmsg) -1])
             lmsg[-1] = (lmsg[-1][0], lmsg[-1][1], 'ok ' + str(time.time() -b))
 
         t_batch_dur = time.time() - t_batch_start
@@ -296,11 +304,6 @@ class Segmenter:
         else:
             avg = -1
         return t_batch_dur, nb_processed, avg, lmsg
-
-def seg2csv(lseg, fout=None):
-    df = pd.DataFrame.from_records(lseg, columns=['labels', 'start', 'stop'])
-    df.to_csv(fout, sep='\t', index=False)
-
 
 
 def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):

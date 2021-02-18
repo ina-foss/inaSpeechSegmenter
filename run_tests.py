@@ -91,6 +91,13 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             self.assertTrue(filecmp.cmp(lout[0], lout[1]))
             self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-sm-gender.csv'))
 
+  
+    def test_praat_export(self):
+        seg = Segmenter()
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            lout = [os.path.join(tmpdirname, '1.TextGrid')]
+            ret = seg.batch_process(['./media/musanmix.mp3'], lout, output_format='textgrid')
+            self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-smn-gender.TextGrid'))       
 
     def test_batch_not_exists(self):
         seg = Segmenter(vad_engine='sm')

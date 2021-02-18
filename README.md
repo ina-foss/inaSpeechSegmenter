@@ -61,40 +61,33 @@ Binary program ina_speech_segmenter.py may be used to segment multimedia archive
 ```bash
 # get help
 $ ina_speech_segmenter.py --help
-usage: ina_speech_segmenter.py [-h] -i INPUT [INPUT ...] -o OUTPUT_DIRECTORY
-                               [-d {sm,smn}] [-g {true,false}]
+usage: ina_speech_segmenter.py [-h] -i INPUT [INPUT ...] -o OUTPUT_DIRECTORY [-d {sm,smn}] [-g {true,false}] [-b FFMPEG_BINARY] [-e {csv,textgrid}]
 
-Do Speech/Music(/Noise) and Male/Female segmentation and store segmentations
-into CSV files. Segments labelled 'noEnergy' are discarded from music, noise,
-speech and gender analysis. 'speech', 'male' and 'female' labels include
-speech over music and speech over noise. 'music' and 'noise' labels are pure
-segments that are not supposed to contain speech.
+Do Speech/Music(/Noise) and Male/Female segmentation and store segmentations into CSV files. Segments labelled 'noEnergy' are discarded from music, noise, speech and gender
+analysis. 'speech', 'male' and 'female' labels include speech over music and speech over noise. 'music' and 'noise' labels are pure segments that are not supposed to contain speech.
 
 optional arguments:
   -h, --help            show this help message and exit
   -i INPUT [INPUT ...], --input INPUT [INPUT ...]
-                        Input media to analyse. May be a full path to a media
-                        (/home/david/test.mp3), a list of full paths
-                        (/home/david/test.mp3 /tmp/mymedia.avi), or a regex
-                        input pattern ("/home/david/myaudiobooks/*.mp3")
+                        Input media to analyse. May be a full path to a media (/home/david/test.mp3), a list of full paths (/home/david/test.mp3 /tmp/mymedia.avi), a regex input
+                        pattern ("/home/david/myaudiobooks/*.mp3"), an url with http protocol (http://url_of_the_file)
   -o OUTPUT_DIRECTORY, --output_directory OUTPUT_DIRECTORY
-                        Directory used to store segmentations. Resulting
-                        segmentations have same base name as the corresponding
-                        input media, with csv extension. Ex: mymedia.MPG will
+                        Directory used to store segmentations. Resulting segmentations have same base name as the corresponding input media, with csv extension. Ex: mymedia.MPG will
                         result in mymedia.csv
   -d {sm,smn}, --vad_engine {sm,smn}
-                        Voice activity detection (VAD) engine to be used
-                        (default: 'smn'). 'smn' split signal into 'speech',
-                        'music' and 'noise' (better). 'sm' split signal into
-                        'speech' and 'music' and do not take noise into
-                        account, which is either classified as music or
-                        speech. Results presented in ICASSP were obtained
-                        using 'sm' option
+                        Voice activity detection (VAD) engine to be used (default: 'smn'). 'smn' split signal into 'speech', 'music' and 'noise' (better). 'sm' split signal into
+                        'speech' and 'music' and do not take noise into account, which is either classified as music or speech. Results presented in ICASSP were obtained using 'sm'
+                        option
   -g {true,false}, --detect_gender {true,false}
-                        (default: 'true'). If set to 'true', segments detected
-                        as speech will be splitted into 'male' and 'female'
-                        segments. If set to 'false', segments corresponding to
-                        speech will be labelled as 'speech' (faster)
+                        (default: 'true'). If set to 'true', segments detected as speech will be splitted into 'male' and 'female' segments. If set to 'false', segments
+                        corresponding to speech will be labelled as 'speech' (faster)
+  -b FFMPEG_BINARY, --ffmpeg_binary FFMPEG_BINARY
+                        Your custom binary of ffmpeg
+  -e {csv,textgrid}, --export_format {csv,textgrid}
+                        (default: 'csv'). If set to 'csv', result will be exported in csv. If set to 'textgrid', results will be exported to praat Textgrid
+
+Detailled description of this framework is presented in the following study: Doukhan, D., Carrive, J., Vallet, F., Larcher, A., & Meignier, S. (2018, April). An open-source speaker
+gender detection framework for monitoring gender equality. In 2018 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP) (pp. 5214-5218). IEEE.
 ```
 ### Using Speech Segmentation API
 

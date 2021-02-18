@@ -1,0 +1,62 @@
+File type = "ooTextFile"
+Object class = "TextGrid"
+
+xmin = 0.000000
+xmax = 74.500000
+tiers? <exists> 
+size = 1
+item []:
+	item [1]:
+		class = "IntervalTier"
+		name = "inaSpeechSegmenter"
+		xmin = 0.000000
+		xmax = 74.500000
+		intervals: size = 12
+		intervals[1]:
+			 xmin = 0.000000
+			 xmax = 22.480000
+			 text = "music"
+		intervals[2]:
+			 xmin = 22.480000
+			 xmax = 29.080000
+			 text = "noEnergy"
+		intervals[3]:
+			 xmin = 29.080000
+			 xmax = 52.800000
+			 text = "noise"
+		intervals[4]:
+			 xmin = 52.800000
+			 xmax = 54.780000
+			 text = "noEnergy"
+		intervals[5]:
+			 xmin = 54.780000
+			 xmax = 55.740000
+			 text = "noise"
+		intervals[6]:
+			 xmin = 55.740000
+			 xmax = 63.340000
+			 text = "noEnergy"
+		intervals[7]:
+			 xmin = 63.340000
+			 xmax = 68.260000
+			 text = "male"
+		intervals[8]:
+			 xmin = 68.260000
+			 xmax = 68.920000
+			 text = "noEnergy"
+		intervals[9]:
+			 xmin = 68.920000
+			 xmax = 71.600000
+			 text = "male"
+		intervals[10]:
+			 xmin = 71.600000
+			 xmax = 72.000000
+			 text = "noEnergy"
+		intervals[11]:
+			 xmin = 72.000000
+			 xmax = 73.820000
+			 text = "male"
+		intervals[12]:
+			 xmin = 73.820000
+			 xmax = 74.500000
+			 text = "noEnergy"

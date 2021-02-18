@@ -48,6 +48,7 @@ parser.add_argument('-o', '--output_directory', help='Directory used to store se
 parser.add_argument('-d', '--vad_engine', choices=['sm', 'smn'], default='smn', help="Voice activity detection (VAD) engine to be used (default: 'smn'). 'smn' split signal into 'speech', 'music' and 'noise' (better). 'sm' split signal into 'speech' and 'music' and do not take noise into account, which is either classified as music or speech. Results presented in ICASSP were obtained using 'sm' option")
 parser.add_argument('-g', '--detect_gender', choices = ['true', 'false'], default='True', help="(default: 'true'). If set to 'true', segments detected as speech will be splitted into 'male' and 'female' segments. If set to 'false', segments corresponding to speech will be labelled as 'speech' (faster)")
 parser.add_argument('-b', '--ffmpeg_binary', default='ffmpeg', help='Your custom binary of ffmpeg', required=False)
+parser.add_argument('-e', '--export_format', choices = ['csv', 'textgrid'], default='csv', help="(default: 'csv'). If set to 'csv', result will be exported in csv. If set to 'textgrid', results will be exported to praat Textgrid")
 
 args = parser.parse_args()
 
@@ -74,5 +75,5 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     base = [os.path.splitext(os.path.basename(e))[0] for e in input_files]
     output_files = [os.path.join(odir, e + '.csv') for e in base]
-    seg.batch_process(input_files, output_files, verbose=True)
+    seg.batch_process(input_files, output_files, verbose=True, output_format=args.export_format)
 
