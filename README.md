@@ -143,3 +143,10 @@ It has received funding from the European Union’s Horizon 2020 research and in
 
 Some optimization within inaSpeechSegmenter code were realized by Cyril Lashkevich
 https://github.com/notorca
+
+The code used to extract mel bands features is copy-pasted from sidekit project:
+https://git-lium.univ-lemans.fr/Larcher/sidekit
+
+Relevant contributions to the project were done by:
+* Eliott Lechapt : https://github.com/elechapt
+* Rémi Uro : https://github.com/r-uro
