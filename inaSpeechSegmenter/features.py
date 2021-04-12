@@ -29,9 +29,10 @@ import warnings
 from subprocess import Popen, PIPE
 import numpy as np
 
-os.environ['SIDEKIT'] = 'theano=false,libsvm=false'
-from sidekit.frontend.io import read_wav
-from sidekit.frontend.features import mfcc
+#os.environ['SIDEKIT'] = 'theano=false,libsvm=false,cuda=false'
+#from sidekit.frontend.io import read_wav
+#from sidekit.frontend.features import mfcc
+from .sidekit_mfcc import read_wav, mfcc
 
 
 def _wav2feats(wavname):
@@ -53,7 +54,7 @@ def _wav2feats(wavname):
 
     with warnings.catch_warnings() as w:
         # ignore warnings resulting from empty signals parts
-        warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning, module='sidekit')
+        warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning)
         _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
         
     # Management of short duration segments
