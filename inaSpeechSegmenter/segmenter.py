@@ -129,7 +129,7 @@ class DnnSegmenter:
         assert len(finite) == len(patches), (len(patches), len(finite))
             
         batch = []
-        for lab, start, stop in lseg:
+        for lab, start, stop, _ in lseg:
             if lab == self.inlabel:
                 batch.append(patches[start:stop, :])
 
@@ -138,9 +138,9 @@ class DnnSegmenter:
             rawpred = self.nn.predict(batch, batch_size=self.batch_size)
 
         ret = []
-        for lab, start, stop in lseg:
+        for lab, start, stop, framepred in lseg:
             if lab != self.inlabel:
-                ret.append((lab, start, stop))
+                ret.append((lab, start, stop, framepred))
                 continue
 
             l = stop - start
@@ -149,7 +149,7 @@ class DnnSegmenter:
             r[finite[start:stop] == False, :] = 0.5
             pred = viterbi_decoding(np.log(r), diag_trans_exp(self.viterbi_arg, len(self.outlabels)))
             for lab2, start2, stop2 in _binidx2seglist(pred):
-                ret.append((self.outlabels[int(lab2)], start2+start, stop2+start))            
+                ret.append((self.outlabels[int(lab2)], start2+start, stop2+start, r[start2:stop2]))            
         return ret
 
 
@@ -233,7 +233,7 @@ class Segmenter:
                 lab = 'noEnergy'
             else:
                 lab = 'energy'
-            lseg.append((lab, start, stop))
+            lseg.append((lab, start, stop, loge[start:stop]))
 
         # perform voice activity detection
         lseg = self.vad(mspec, lseg, difflen)
@@ -242,8 +242,16 @@ class Segmenter:
         if self.detect_gender:
             lseg = self.gender(mspec, lseg, difflen)
 
-        return [(lab, start_sec + start * .02, start_sec + stop * .02) for lab, start, stop in lseg]
-
+        ret = []
+        for lab, start, stop, framepred in lseg:
+            if lab in ['male', 'female']:
+                framepred = framepred[:,0]
+                framepred[framepred==0.5] = np.NAN
+                ret.append((lab, start_sec + start * .02, start_sec + stop * .02, np.mean(framepred), np.array(range(start, stop))*.02+start_sec, framepred))
+            else:
+                ret.append((lab, start_sec + start * .02, start_sec + stop * .02, None, None, None))
+        return ret
+        
 
     def __call__(self, medianame, tmpdir=None, start_sec=None, stop_sec=None):
         """
