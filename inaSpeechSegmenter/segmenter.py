@@ -28,7 +28,7 @@ import os
 import sys
 
 import numpy as np
-import keras
+from tensorflow import keras
 from .thread_returning import ThreadReturning
 
 import shutil
