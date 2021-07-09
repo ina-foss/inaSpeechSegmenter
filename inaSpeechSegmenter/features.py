@@ -95,6 +95,6 @@ def media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg, re_encode=False)
             assert p.returncode == 0, error
     else:
         tmpwav = medianame
-        print('skip reencode')
-        # Get Mel Power Spectrogram and Energy
-        return _wav2feats(tmpwav)
+        print('skipping encoding')
+    # Get Mel Power Spectrogram and Energy
+    return _wav2feats(tmpwav)

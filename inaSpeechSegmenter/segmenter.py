@@ -195,7 +195,7 @@ class Segmenter:
         """      
 
         # test ffmpeg installation
-        if shutil.which(ffmpeg) is None:
+        if re_encode and shutil.which(ffmpeg) is None:
             raise(Exception("""ffmpeg program not found"""))
         self.ffmpeg = ffmpeg
 
@@ -266,7 +266,7 @@ class Segmenter:
         return self.segment_feats(mspec, loge, difflen, start_sec)
 
     
-    def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2., output_format='csv', re_encode=False):
+    def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2., output_format='csv'):
         
         if verbose:
             print('batch_processing %d files' % len(linput))
@@ -281,7 +281,7 @@ class Segmenter:
         t_batch_start = time.time()
         
         lmsg = []
-        fg = featGenerator(linput.copy(), loutput.copy(), tmpdir, self.ffmpeg, skipifexist, nbtry, trydelay, re_encode)
+        fg = featGenerator(linput.copy(), loutput.copy(), tmpdir, self.ffmpeg, skipifexist, nbtry, trydelay, self.re_encode)
         i = 0
         for feats, msg in fg:
             lmsg += msg
