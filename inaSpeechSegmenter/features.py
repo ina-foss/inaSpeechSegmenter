@@ -72,7 +72,6 @@ def media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg, re_encode=False)
     """
     Convert media to temp wav 16k file and return features
     """
-    
     base, _ = os.path.splitext(os.path.basename(medianame))
     if re_encode:
 

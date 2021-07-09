@@ -333,7 +333,7 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay, re_
         itry = 0
         while ret is None and itry < nbtry:
             try:
-                ret = media2feats(src, tmpdir, None, None, ffmpeg, re_encode)
+                ret = media2feats(src, tmpdir, None, None, ffmpeg, re_encode=re_encode)
             except:
                 itry += 1
                 errmsg = sys.exc_info()[0]
@@ -349,6 +349,7 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay, re_
     
 def featGenerator(ilist, olist, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, nbtry=1, trydelay=2., re_encode=False):
 #    print('init feat gen', len(ilist))
+    
     thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay, re_encode])
     thread.start()
     while True:

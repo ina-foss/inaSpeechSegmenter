@@ -71,11 +71,13 @@ from inaSpeechSegmenter import Segmenter, seg2csv
 
 # load neural network into memory, may last few seconds
 detect_gender = bool(distutils.util.strtobool(args.detect_gender))
-seg = Segmenter(vad_engine=args.vad_engine, detect_gender=detect_gender, ffmpeg=args.ffmpeg_binary)
+re_encode = bool(distutils.util.strtobool(args.re_encode))
+skipifexist = bool(distutils.util.strtobool(args.skip_existing))
+seg = Segmenter(vad_engine=args.vad_engine, detect_gender=detect_gender, ffmpeg=args.ffmpeg_binary, re_encode=re_encode)
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     base = [os.path.splitext(os.path.basename(e))[0] for e in input_files]
     output_files = [os.path.join(odir, e + '.csv') for e in base]
-    seg.batch_process(input_files, output_files, verbose=True, output_format=args.export_format, skipifexist=args.skip_existing, re_encode=args.re_encode)
+    seg.batch_process(input_files, output_files, verbose=True, output_format=args.export_format, skipifexist=skipifexist)
 
