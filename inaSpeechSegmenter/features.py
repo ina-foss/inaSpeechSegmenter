@@ -68,30 +68,33 @@ def _wav2feats(wavname):
     return mspec, loge, difflen
 
 
-def media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg):
+def media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg, re_encode=False):
     """
     Convert media to temp wav 16k file and return features
     """
     
     base, _ = os.path.splitext(os.path.basename(medianame))
+    if re_encode:
 
-    with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
-        # build ffmpeg command line
-        tmpwav = tmpdirname + '/' + base + '.wav'
-        args = [ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1']
-        if start_sec is None:
-            start_sec = 0
-        else:
-            args += ['-ss', '%f' % start_sec]
+        with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
+            # build ffmpeg command line
+            tmpwav = tmpdirname + '/' + base + '.wav'
+            args = [ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1']
+            if start_sec is None:
+                start_sec = 0
+            else:
+                args += ['-ss', '%f' % start_sec]
 
-        if stop_sec is not None:
-            args += ['-to', '%f' % stop_sec]
-        args += [tmpwav]
+            if stop_sec is not None:
+                args += ['-to', '%f' % stop_sec]
+            args += [tmpwav]
 
-        # launch ffmpeg
-        p = Popen(args, stdout=PIPE, stderr=PIPE)
-        output, error = p.communicate()
-        assert p.returncode == 0, error
-
+            # launch ffmpeg
+            p = Popen(args, stdout=PIPE, stderr=PIPE)
+            output, error = p.communicate()
+            assert p.returncode == 0, error
+    else:
+        tmpwav = medianame
+        print('skip reencode')
         # Get Mel Power Spectrogram and Energy
         return _wav2feats(tmpwav)

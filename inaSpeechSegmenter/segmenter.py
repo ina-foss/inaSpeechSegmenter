@@ -179,7 +179,7 @@ class Gender(DnnSegmenter):
 
 
 class Segmenter:
-    def __init__(self, vad_engine='smn', detect_gender=True, ffmpeg='ffmpeg', batch_size=32):
+    def __init__(self, vad_engine='smn', detect_gender=True, ffmpeg='ffmpeg', batch_size=32, re_encode=False):
         """
         Load neural network models
         
@@ -214,6 +214,7 @@ class Segmenter:
         self.detect_gender = detect_gender
         if detect_gender:
             self.gender = Gender(batch_size)
+        self.re_encode=re_encode
 
 
     def segment_feats(self, mspec, loge, difflen, start_sec):
@@ -258,14 +259,14 @@ class Segmenter:
         * stop_sec (seconds): sound stream after stop_sec won't be processed
         """
         
-        mspec, loge, difflen = media2feats(medianame, tmpdir, start_sec, stop_sec, self.ffmpeg)
+        mspec, loge, difflen = media2feats(medianame, tmpdir, start_sec, stop_sec, self.ffmpeg, self.re_encode)
         if start_sec is None:
             start_sec = 0
         # do segmentation   
         return self.segment_feats(mspec, loge, difflen, start_sec)
 
     
-    def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2., output_format='csv'):
+    def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2., output_format='csv', re_encode=False):
         
         if verbose:
             print('batch_processing %d files' % len(linput))
@@ -280,7 +281,7 @@ class Segmenter:
         t_batch_start = time.time()
         
         lmsg = []
-        fg = featGenerator(linput.copy(), loutput.copy(), tmpdir, self.ffmpeg, skipifexist, nbtry, trydelay)
+        fg = featGenerator(linput.copy(), loutput.copy(), tmpdir, self.ffmpeg, skipifexist, nbtry, trydelay, re_encode)
         i = 0
         for feats, msg in fg:
             lmsg += msg
@@ -306,7 +307,7 @@ class Segmenter:
         return t_batch_dur, nb_processed, avg, lmsg
 
 
-def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
+def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay, re_encode):
     """
     To be used when processing batches
     if resulting file exists, it is skipped
@@ -332,7 +333,7 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
         itry = 0
         while ret is None and itry < nbtry:
             try:
-                ret = media2feats(src, tmpdir, None, None, ffmpeg)
+                ret = media2feats(src, tmpdir, None, None, ffmpeg, re_encode)
             except:
                 itry += 1
                 errmsg = sys.exc_info()[0]
@@ -346,9 +347,9 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
     return ret, msg
 
     
-def featGenerator(ilist, olist, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, nbtry=1, trydelay=2.):
+def featGenerator(ilist, olist, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, nbtry=1, trydelay=2., re_encode=False):
 #    print('init feat gen', len(ilist))
-    thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay])
+    thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay, re_encode])
     thread.start()
     while True:
         ret, msg = thread.join()
@@ -358,7 +359,7 @@ def featGenerator(ilist, olist, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False,
         #olist = olist[len(msg):]
         if len(ilist) == 0:
             break
-        thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay])
+        thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay, re_encode])
         thread.start()
         yield ret, msg
     yield ret, msg
