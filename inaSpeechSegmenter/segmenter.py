@@ -46,7 +46,7 @@ from .export_funcs import seg2csv, seg2textgrid
 
 
 
-def _energy_activity(loge, ratio=0.03):
+def _energy_activity(loge, ratio):
     threshold = np.mean(loge[np.isfinite(loge)]) + np.log(ratio)
     raw_activity = (loge > threshold)
     return viterbi_decoding(pred2logemission(raw_activity),
@@ -179,7 +179,7 @@ class Gender(DnnSegmenter):
 
 
 class Segmenter:
-    def __init__(self, vad_engine='smn', detect_gender=True, ffmpeg='ffmpeg', batch_size=32):
+    def __init__(self, vad_engine='smn', detect_gender=True, ffmpeg='ffmpeg', batch_size=32, energy_ratio=0.03):
         """
         Load neural network models
         
@@ -201,7 +201,9 @@ class Segmenter:
 
 #        self.graph = KB.get_session().graph # To prevent the issue of keras with tensorflow backend for async tasks
 
-        
+        # set energic ratio for 1st VAD
+        self.energy_ratio = energy_ratio
+
         # select speech/music or speech/music/noise voice activity detection engine
         assert vad_engine in ['sm', 'smn']
         if vad_engine == 'sm':
@@ -228,7 +230,7 @@ class Segmenter:
 
         # perform energy-based activity detection
         lseg = []
-        for lab, start, stop in _binidx2seglist(_energy_activity(loge)[::2]):
+        for lab, start, stop in _binidx2seglist(_energy_activity(loge, self.energy_ratio)[::2]):
             if lab == 0:
                 lab = 'noEnergy'
             else:

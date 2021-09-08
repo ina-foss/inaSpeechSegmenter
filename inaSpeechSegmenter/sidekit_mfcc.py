@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 #
 # This file is part of SIDEKIT.
@@ -209,10 +208,10 @@ def trfbank(fs, nfft, lowfreq, maxfreq, nlinfilt, nlogfilt, midfreq=1000):
         cen = frequences[i + 1]
         hi = frequences[i + 2]
 
-        lid = numpy.arange(numpy.floor(low * nfft / fs) + 1, numpy.floor(cen * nfft / fs) + 1, dtype=numpy.int)
+        lid = numpy.arange(numpy.floor(low * nfft / fs) + 1, numpy.floor(cen * nfft / fs) + 1, dtype=numpy.int32)
         left_slope = heights[i] / (cen - low)
         rid = numpy.arange(numpy.floor(cen * nfft / fs) + 1,
-                           min(numpy.floor(hi * nfft / fs) + 1, nfft), dtype=numpy.int)
+                           min(numpy.floor(hi * nfft / fs) + 1, nfft), dtype=numpy.int32)
         right_slope = heights[i] / (hi - cen)
         fbank[i][lid] = left_slope * (n_frequences[lid] - low)
         fbank[i][rid[:-1]] = right_slope * (hi - n_frequences[rid[:-1]])
