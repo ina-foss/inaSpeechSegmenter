@@ -24,14 +24,11 @@ Installation of ffmpeg for ubuntu can be done using the following commandline:
 $ sudo apt-get install ffmpeg
 ```
 ### PIP installation
-Simplest installation procedure
+Simplest installation procedure which downloads everything
 ```bash
 # create a python 3 virtual environement and activate it
 $ virtualenv -p python3 inaSpeechSegEnv
 $ source inaSpeechSegEnv/bin/activate
-# install a backend for keras (tensorflow, theano, cntk...)
-$ pip install tensorflow-gpu # if you wish GPU implementation (recommended if your host has a GPU)
-$ pip install tensorflow # for a CPU implementation
 # install framework and dependencies
 $ pip install inaSpeechSegmenter
 ```
@@ -44,12 +41,10 @@ $ git clone https://github.com/ina-foss/inaSpeechSegmenter.git
 # create a python 3 virtual environement and activate it
 $ virtualenv -p python3 inaSpeechSegEnv
 $ source inaSpeechSegEnv/bin/activate
-# install a backend for keras (tensorflow, theano, cntk...)
-$ pip install tensorflow-gpu # if you wish GPU implementation (recommended)
-$ pip install tensorflow # for a CPU implementation
 # install framework and dependencies
+# you should use pip instead of setup.py for installing from source
 $ cd inaSpeechSegmenter
-$ python setup.py install
+$ pip install .
 # check program behavior
 $ python setup.py test
 ```

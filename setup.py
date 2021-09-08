@@ -93,13 +93,13 @@ Details on the speech detection submodule can be found bellow:
 
 setup(
     name = "inaSpeechSegmenter",
-    version = "0.6.7",
+    version = "0.6.8",
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
     test_suite="run_tests.py",
     description = DESCRIPTION,
     license = "MIT",
-    install_requires=['numpy', 'pandas', 'keras', 'scikit-image', 'pyannote.algorithms', 'pyannote.core', 'pyannote.parser', 'matplotlib', 'Pyro4', 'pytextgrid', 'soundfile'],
+    install_requires=['tensorflow', 'numpy', 'pandas', 'scikit-image', 'pyannote.algorithms', 'pyannote.core', 'pyannote.parser', 'matplotlib', 'Pyro4', 'pytextgrid', 'soundfile'],
  #   keywords = "example documentation tutorial",
     url = "https://github.com/ina-foss/inaSpeechSegmenter",
 #    packages=['inaSpeechSegmenter'],
