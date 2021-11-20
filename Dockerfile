@@ -1,27 +1,20 @@
-# Build command bellow:
-# docker build --build-arg username=$USER --build-arg uid=`id -u $USER` .
-#
 # This docker image have been tested using the following configuration
 # of nvidia drivers obtained using the command nvidia-smi
-# NVIDIA-SMI 418.56 Driver Version: 418.56 CUDA Version: 10.1
-# NVIDIA-SMI 450.80.02 Driver Version: 450.80.02 CUDA Version: 11.0
+# NVIDIA-SMI 470.82.01    Driver Version: 470.82.01    CUDA Version: 11.4
 
-# for more recent drivers, the following configuration may work
-# NVIDIA-SMI 460.32.03    Driver Version: 460.32.03    CUDA Version: 11.2
-# FROM tensorflow/tensorflow:2.4.1-gpu-jupyter
 
-FROM tensorflow/tensorflow:2.3.0-gpu-jupyter
 
-RUN apt-get update
-RUN apt-get install -y ffmpeg
+FROM tensorflow/tensorflow:2.7.0-gpu-jupyter
 
-RUN pip install inaspeechsegmenter
+MAINTAINER David Doukhan david.doukhan@gmail.com
 
-# $USER
-ARG username
-# id -u $USER
-ARG uid
+RUN apt-get update \
+    && apt-get install -y ffmpeg \
+    && apt-get clean \
+    && apt-get autoclean \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN useradd --uid $uid -U -m  -s /bin/bash $username
-USER $username
-ENV HOME /home/$username
+WORKDIR /inaSpeechSegmenter
+COPY . ./
+
+RUN pip install --upgrade pip && pip install . && pip cache purge

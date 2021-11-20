@@ -13,8 +13,9 @@ inaSpeechSegmenter has been designed in order to perform [large-scale gender equ
 
 ## Installation
 
-inaSpeechSegmenter is a framework in python 3. Only python versions greater or equal to 3.6 are supported.
-It can be installed using the following procedure:
+inaSpeechSegmenter works with Python 3.6+.
+It is available on Python Package Index [inaSpeechSegmenter](https://pypi.org/project/inaSpeechSegmenter/) and packaged as a docker image [inafoss/inaspeechsegmenter](https://hub.docker.com/r/inafoss/inaspeechsegmenter).
+
 
 ### Prerequisites
 
@@ -23,12 +24,12 @@ Installation of ffmpeg for ubuntu can be done using the following commandline:
 ```bash
 $ sudo apt-get install ffmpeg
 ```
+
 ### PIP installation
-Simplest installation procedure which downloads everything
 ```bash
 # create a python 3 virtual environement and activate it
-$ virtualenv -p python3 inaSpeechSegEnv
-$ source inaSpeechSegEnv/bin/activate
+$ virtualenv -p python3 env
+$ source env/bin/activate
 # install framework and dependencies
 $ pip install inaSpeechSegmenter
 ```
@@ -39,8 +40,8 @@ $ pip install inaSpeechSegmenter
 # clone git repository
 $ git clone https://github.com/ina-foss/inaSpeechSegmenter.git
 # create a python 3 virtual environement and activate it
-$ virtualenv -p python3 inaSpeechSegEnv
-$ source inaSpeechSegEnv/bin/activate
+$ virtualenv -p python3 env
+$ source env/bin/activate
 # install framework and dependencies
 # you should use pip instead of setup.py for installing from source
 $ cd inaSpeechSegmenter
