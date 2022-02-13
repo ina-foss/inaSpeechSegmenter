@@ -96,7 +96,7 @@ setup(
     version = "0.6.9",
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
-    test_suite="run_tests.py",
+    test_suite="run_test.py",
     description = DESCRIPTION,
     license = "MIT",
     install_requires=['tensorflow', 'numpy', 'pandas', 'scikit-image', 'pyannote.algorithms', 'pyannote.core', 'pyannote.parser', 'matplotlib', 'Pyro4', 'pytextgrid', 'soundfile'],
