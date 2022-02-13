@@ -1,4 +1,5 @@
 # inaSpeechSegmenter
+[![PyPI version](https://badge.fury.io/py/inaSpeechSegmenter.svg)](https://badge.fury.io/py/inaSpeechSegmenter)
 
 inaSpeechSegmenter is a CNN-based audio segmentation toolkit.
 
