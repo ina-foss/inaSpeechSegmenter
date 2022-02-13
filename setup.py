@@ -45,18 +45,27 @@ voice-activity-detection
 praat'''.strip().split('\n')
 
 CLASSIFIERS=[
-    'Development Status :: 3 - Alpha',
+    'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
     'Intended Audience :: Education',
     'Intended Audience :: Science/Research',
     'License :: OSI Approved :: MIT License',
     'Operating System :: OS Independent',
     'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3 :: Only',
+    'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
     'Topic :: Multimedia :: Sound/Audio',
     'Topic :: Multimedia :: Sound/Audio :: Analysis',
     'Topic :: Multimedia :: Sound/Audio :: Speech',
     'Topic :: Scientific/Engineering',
     'Topic :: Scientific/Engineering :: Artificial Intelligence',
+    'Topic :: Software Development',
+    'Topic :: Software Development :: Libraries',
+    'Topic :: Software Development :: Libraries :: Python Modules',
     'Topic :: Sociology',
 ]
 
@@ -106,7 +115,6 @@ setup(
 #    packages=['inaSpeechSegmenter'],
     keywords = KEYWORDS,
     packages = find_packages(),
-    # package_data = {'inaSpeechSegmenter': ['*.hdf5']},
     include_package_data = True,
     data_files = ['LICENSE'],
     long_description=LONGDESCRIPTION,
