@@ -26,7 +26,7 @@
 
 import os
 from setuptools import setup, find_packages
-
+import versioneer
 
 KEYWORDS = '''
 speech-segmentation
@@ -93,7 +93,8 @@ Details on the speech detection submodule can be found bellow:
 
 setup(
     name = "inaSpeechSegmenter",
-    version = "0.6.9",
+    version = versioneer.get_version(),
+    cmdclass = versioneer.get_cmdclass(),
     author = "David Doukhan",
     author_email = "david.doukhan@gmail.com",
     test_suite="run_test.py",
