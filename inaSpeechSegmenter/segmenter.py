@@ -29,6 +29,7 @@ import sys
 
 import numpy as np
 from tensorflow import keras
+from tensorflow.keras.utils import get_file
 from .thread_returning import ThreadReturning
 
 import shutil
@@ -103,10 +104,11 @@ class DnnSegmenter:
     """
     def __init__(self, batch_size):
         # load the DNN model
-        p = os.path.dirname(os.path.realpath(__file__)) + '/'
-        self.nn = keras.models.load_model(p + self.model_fname, compile=False)        
+        url = 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/models/'
+        model_path = get_file(self.model_fname, url + self.model_fname, cache_subdir='inaSpeechSegmenter')
+        self.nn = keras.models.load_model(model_path, compile=False)
         self.batch_size = batch_size
-        
+
     def __call__(self, mspec, lseg, difflen = 0):
         """
         *** input
