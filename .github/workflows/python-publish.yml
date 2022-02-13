@@ -8,11 +8,11 @@
 
 name: Upload 🐍 distributions 📦 to PyPI and TestPyPI
 
-on:
+on:  
   push:
+    tags:
+      - 'v*'
     branches: [ master ]
-    tags:        
-      - 'v*'           # Push events to every tag not containing /
 
 jobs:
   deploy:
