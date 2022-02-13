@@ -32,7 +32,7 @@ jobs:
     - name: Build package
       run: python -m build
     - name: Publish package on test PyPi
-      uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+      uses: pypa/gh-action-pypi-publish@master
       with:
         user: __token__
         password: ${{ secrets.TEST_PYPI_INASPEECHSEGMENTER_TOKEN }}
