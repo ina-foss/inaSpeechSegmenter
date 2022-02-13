@@ -1,4 +1,5 @@
 # inaSpeechSegmenter
+[![Github actions](https://github.com/ina-foss/inaSpeechSegmenter/workflows/python-package/badge.svg)](https://github.com/ina-foss/inaSpeechSegmenter/actions)
 [![PyPI version](https://badge.fury.io/py/inaSpeechSegmenter.svg)](https://badge.fury.io/py/inaSpeechSegmenter)
 [![Docker Pulls](https://img.shields.io/docker/pulls/inafoss/inaspeechsegmenter)](https://hub.docker.com/r/inafoss/inaspeechsegmenter)
 

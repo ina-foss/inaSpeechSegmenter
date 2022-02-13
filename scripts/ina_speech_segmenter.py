@@ -45,6 +45,7 @@ Doukhan, D., Carrive, J., Vallet, F., Larcher, A., & Meignier, S. (2018, April).
 parser = argparse.ArgumentParser(description=description, epilog=epilog)
 parser.add_argument('-i', '--input', nargs='+', help='Input media to analyse. May be a full path to a media (/home/david/test.mp3), a list of full paths (/home/david/test.mp3 /tmp/mymedia.avi), a regex input pattern ("/home/david/myaudiobooks/*.mp3"), an url with http protocol (http://url_of_the_file)', required=True)
 parser.add_argument('-o', '--output_directory', help='Directory used to store segmentations. Resulting segmentations have same base name as the corresponding input media, with csv extension. Ex: mymedia.MPG will result in mymedia.csv', required=True)
+parser.add_argument('-s', '--batch_size', type=int, default=32, help="(default: 32 - we recommend 1024). Size of batches to be sent to the GPU. Larger values allow faster processings, but require GPU with more memories. Default 32 size is fine even with a baseline laptop GPU.")
 parser.add_argument('-d', '--vad_engine', choices=['sm', 'smn'], default='smn', help="Voice activity detection (VAD) engine to be used (default: 'smn'). 'smn' split signal into 'speech', 'music' and 'noise' (better). 'sm' split signal into 'speech' and 'music' and do not take noise into account, which is either classified as music or speech. Results presented in ICASSP were obtained using 'sm' option")
 parser.add_argument('-g', '--detect_gender', choices = ['true', 'false'], default='True', help="(default: 'true'). If set to 'true', segments detected as speech will be splitted into 'male' and 'female' segments. If set to 'false', segments corresponding to speech will be labelled as 'speech' (faster)")
 parser.add_argument('-b', '--ffmpeg_binary', default='ffmpeg', help='Your custom binary of ffmpeg', required=False)
@@ -70,7 +71,7 @@ from inaSpeechSegmenter import Segmenter, seg2csv
 
 # load neural network into memory, may last few seconds
 detect_gender = bool(distutils.util.strtobool(args.detect_gender))
-seg = Segmenter(vad_engine=args.vad_engine, detect_gender=detect_gender, ffmpeg=args.ffmpeg_binary, energy_ratio=args.energy_ratio)
+seg = Segmenter(vad_engine=args.vad_engine, detect_gender=detect_gender, ffmpeg=args.ffmpeg_binary, energy_ratio=args.energy_ratio, batch_size=args.batch_size)
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")

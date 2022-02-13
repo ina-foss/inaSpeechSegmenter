@@ -192,6 +192,10 @@ class Segmenter:
         
         'detect_gender': if False, speech excerpts are return labelled as 'speech'
                 if True, speech excerpts are splitted into 'male' and 'female' segments
+
+        'batch_size' : large values of batch_size (ex: 1024) allow faster processing times.
+                They also require more memory on the GPU.
+                default value (32) is slow, but works on any hardware
         """      
 
         # test ffmpeg installation
