@@ -106,7 +106,13 @@ class DnnSegmenter:
     def __init__(self, batch_size):
         # load the DNN model
         url = 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/models/'
-        model_path = get_file(self.model_fname, url + self.model_fname, cache_subdir='inaSpeechSegmenter')
+
+        # check if model is stored in /root/.keras (docker), else download it
+        model_path = '/root/.keras/inaSpeechSegmenter/' + self.model_fname
+        if not(os.path.isfile(model_path) and os.access(model_path, os.R_OK)):
+            # not docker case: download the model and store it in ~/.keras
+            model_path = get_file(self.model_fname, url + self.model_fname, cache_subdir='inaSpeechSegmenter')
+
         self.nn = keras.models.load_model(model_path, compile=False)
         self.nn.run_eagerly = False
         self.batch_size = batch_size
