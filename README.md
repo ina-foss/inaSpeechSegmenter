@@ -102,7 +102,7 @@ Class constructor accept 3 optional arguments:
 * ffmpeg: allows to provide a specific binary of ffmpeg instead of default system installation
 
 
-See the following notebook for a comprehensive example: [API Tutorial Here!](API_Tutorial.ipynb)
+See the following notebook for a comprehensive example: [API Tutorial Here!](tutorials/API_Tutorial.ipynb)
 
 ## Citing
 
