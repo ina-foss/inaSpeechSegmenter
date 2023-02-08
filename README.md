@@ -92,6 +92,11 @@ gender detection framework for monitoring gender equality. In 2018 IEEE Internat
 ### Using Speech Segmentation API
 
 InaSpeechSegmentation API is intended to be very simple to use.
+
+The API behavior is illustrated by these 2 notebooks :
+* [Google colab tutorial](https://raw.githubusercontent.com/ina-foss/inaSpeechSegmenter/master/tutorials/Demo_INASPeechSegmenter.ipynb): use API online
+* [Jupyter notebook tutorial](tutorials/API_Tutorial.ipynb) : to be used offline
+
 The class allowing to perform segmentations is called Segmenter.
 It is the only class that you need to import in a program.
 Class constructor accept 3 optional arguments:
@@ -102,7 +107,6 @@ Class constructor accept 3 optional arguments:
 * ffmpeg: allows to provide a specific binary of ffmpeg instead of default system installation
 
 
-See the following notebook for a comprehensive example: [API Tutorial Here!](tutorials/API_Tutorial.ipynb)
 
 ## Citing
 
