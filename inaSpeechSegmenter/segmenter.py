@@ -35,6 +35,7 @@ from .thread_returning import ThreadReturning
 import shutil
 import time
 import random
+import gc
 
 from skimage.util import view_as_windows as vaw
 
@@ -107,6 +108,7 @@ class DnnSegmenter:
         url = 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/models/'
         model_path = get_file(self.model_fname, url + self.model_fname, cache_subdir='inaSpeechSegmenter')
         self.nn = keras.models.load_model(model_path, compile=False)
+        self.nn.run_eagerly = False
         self.batch_size = batch_size
 
     def __call__(self, mspec, lseg, difflen = 0):
@@ -137,8 +139,9 @@ class DnnSegmenter:
 
         if len(batch) > 0:
             batch = np.concatenate(batch)
-            rawpred = self.nn.predict(batch, batch_size=self.batch_size)
-
+            rawpred = self.nn.predict(batch, batch_size=self.batch_size, verbose=2)
+        gc.collect()
+            
         ret = []
         for lab, start, stop in lseg:
             if lab != self.inlabel:
