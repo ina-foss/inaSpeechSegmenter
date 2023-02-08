@@ -15,7 +15,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # download models to be used by default
-# this part is non mandatory, costs 500 Mo, and ease image usage
+# this part is non mandatory, costs 15 Mo, and ease image usage
 ARG u='https://github.com/ina-foss/inaSpeechSegmenter/releases/download/models/'
 ADD ${u}keras_male_female_cnn.hdf5 \
     ${u}keras_speech_music_cnn.hdf5 \
