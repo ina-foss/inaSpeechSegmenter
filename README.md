@@ -10,14 +10,15 @@ inaSpeechSegmenter is a CNN-based audio segmentation toolkit.
 It splits audio signals into homogeneous zones of speech, music and noise.
 Speech zones are split into segments tagged using speaker gender (male or female).
 Male and female classification models are optimized for French language since they were trained using French speakers (accoustic correlates of speaker gender are language dependent).
-Zones corresponding to speech over music or speech over noise are tagged as speech.
+Zones corresponding to speech over music or speech over noise are tagged as speech. 
 
 
 inaSpeechSegmenter has been designed in order to perform [large-scale gender equality studies](http://doi.org/10.18146/2213-0969.2018.jethc156) based on men and women speech-time percentage estimation.
 
 ## Installation
 
-inaSpeechSegmenter works with Python 3.7+.
+inaSpeechSegmenter works with Python 3.7 to Python 3.10. It is based on Tensorflow which does not yet support Python 3.11+.
+
 It is available on Python Package Index [inaSpeechSegmenter](https://pypi.org/project/inaSpeechSegmenter/) and packaged as a docker image [inafoss/inaspeechsegmenter](https://hub.docker.com/r/inafoss/inaspeechsegmenter).
 
 
