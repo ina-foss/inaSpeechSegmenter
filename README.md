@@ -91,9 +91,7 @@ gender detection framework for monitoring gender equality. In 2018 IEEE Internat
 ```
 ### Using Speech Segmentation API
 
-InaSpeechSegmentation API is intended to be very simple to use.
-
-The API behavior is illustrated by these 2 notebooks :
+InaSpeechSegmentation API is intended to be very simple to use, and is illustrated by these 2 notebooks :
 * [Google colab tutorial](https://colab.research.google.com/github/ina-foss/inaSpeechSegmenter/blob/master/tutorials/Demo_INASPeechSegmenter.ipynb): use API online
 * [Jupyter notebook tutorial](tutorials/API_Tutorial.ipynb) : to be used offline
 
