@@ -5,7 +5,6 @@ import tempfile
 from subprocess import Popen, PIPE
 import onnxruntime as ort
 import logging
-import time
 import torch.backends
 import soundfile as sf
 import h5py
@@ -20,22 +19,6 @@ from inaSpeechSegmenter.segmenter import Segmenter
 torch.backends.cudnn.enabled = True
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
-
-class Timer(object):
-    def __init__(self, name=None):
-        self.name = name
-
-    def __enter__(self):
-        self.tstart = time.time()
-        if self.name:
-            logger.info(f'Start: {self.name}: ')
-
-    def __exit__(self, type, value, traceback):
-        if self.name:
-            logger.info(f'End:   {self.name}: Elapsed: {time.time() - self.tstart} seconds')
-        else:
-            logger.info(f'End:   {self.name}: ')
 
 
 def initialize_gpus(gpu):
@@ -218,7 +201,7 @@ Current chosen device : %s
         if gd_model_criteria == "bgc":
             gd_model = "interspeech2023_all.hdf5"
         elif gd_model_criteria == "vfp":
-            gd_model = "interspeech2023_cv.hdf5"
+            gd_model = "interspeech2023_cvfr.hdf5"
         self.gender_detection_mlp_model = keras.models.load_model(
             get_file(gd_model, url + gd_model, cache_dir="interspeech23"),
             compile=False)
@@ -263,36 +246,31 @@ Current chosen device : %s
         basename, ext = os.path.splitext(os.path.basename(fpath))[0], os.path.splitext(os.path.basename(fpath))[1]
 
         with torch.no_grad():
-            with Timer(f'Processing file {basename}'):
-                # Read "wav" file
-                signal, samplerate, duration = launch_ffmpeg(fpath, tmpdir)
+            # Read "wav" file
+            signal, samplerate, duration = launch_ffmpeg(fpath, tmpdir)
 
-                # process segment only if longer than 0.01s
-                if signal.shape[0] > 0.01 * samplerate:
+            # process segment only if longer than 0.01s
+            if signal.shape[0] > 0.01 * samplerate:
 
-                    # Processing features (mel bands extraction)
-                    features, slen, start = self.get_features(signal, samplerate)
+                # Processing features (mel bands extraction)
+                features, slen, start = self.get_features(signal, samplerate)
 
-                    # Get xvector embeddings
-                    x_vectors = xvector_extraction(self.xvector_model, basename, features, start, slen, self.seg_len,
-                                                   self.seg_jump, self.label_name, self.input_name, duration,
-                                                   self.backend, device=self.device, save_seg=self.save_segments)
+                # Get xvector embeddings
+                x_vectors = xvector_extraction(self.xvector_model, basename, features, start, slen, self.seg_len,
+                                               self.seg_jump, self.label_name, self.input_name, duration,
+                                               self.backend, device=self.device, save_seg=self.save_segments)
 
-                    # Applying voice activity detection
-                    vad_seg = self.vad(fpath)
-                    annot_vad = get_annot_VAD(vad_seg)
+                # Applying voice activity detection
+                vad_seg = self.vad(fpath)
+                annot_vad = get_annot_VAD(vad_seg)
 
-                    # Applying gender detection (pretrained Multi layer perceptron)
-                    x = np.asarray([x * 10 for _, x in x_vectors])
-                    gender_pred = self.gender_detection_mlp_model.predict(x, verbose=0)
-                    if len(gender_pred) > 1:
-                        gender_pred = np.squeeze(gender_pred)
+                # Applying gender detection (pretrained Multi layer perceptron)
+                x = np.asarray([x * 10 for _, x in x_vectors])
+                gender_pred = self.gender_detection_mlp_model.predict(x, verbose=0)
+                if len(gender_pred) > 1:
+                    gender_pred = np.squeeze(gender_pred)
 
-                    # Femininity score (from binary predictions)
-                    score, _ = get_femininity_score(gender_pred, annot_vad, duration)
+                # Femininity score (from binary predictions)
+                score, _ = get_femininity_score(gender_pred, annot_vad, duration)
 
-                    print(
-                        "\nGender detection model on top of VBx features.\nDuration file : %.2fs, %s vectors extracted\n- Voice femininity score : %.3f"
-                        % (duration, len(x_vectors), score))
-
-                    return x_vectors, score
+                return score
