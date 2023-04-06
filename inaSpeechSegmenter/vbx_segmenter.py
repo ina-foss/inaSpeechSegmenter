@@ -236,10 +236,10 @@ Current chosen device : %s
 
     def __call__(self, fpath, tmpdir=None):
         """
-        Return VBx output features and Voice Femininity Score of a given file :
+        Return Voice Femininity Score of a given file :
                 * convert file to wav 16k mono with ffmpeg
                 * operate Mel bands extraction
-                * get X-dim features
+                * get VBx features
                 * operate voice activity detection using ISS VAD ('smn')
                 * apply gender detection model and compute femininity score
         """
