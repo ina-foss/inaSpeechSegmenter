@@ -11,9 +11,6 @@ import h5py
 
 import keras
 from keras.utils import get_file
-from keras.models import Model, clone_model
-from keras.layers import Activation
-
 from pyannote.core import Segment, Annotation
 
 from inaSpeechSegmenter.resnet import ResNet101
@@ -238,41 +235,6 @@ Current chosen device : %s
 
         return fea, slen, start
 
-    def f(self, layer):
-        """
-        Create copy of the original model without activation on the output layer
-        """
-        config = layer.get_config()
-        if not isinstance(layer, Activation) and layer.name in self.gender_detection_mlp_model.output_names:
-            config.pop('activation', None)
-        layer_copy = layer.__class__.from_config(config)
-        return layer_copy
-
-    def get_value_before_last_activation(self, feat):
-        """
-        Copy gender detection model without applying sigmoid activation on the last dense layer.
-        """
-
-        copy_model = clone_model(self.gender_detection_mlp_model, clone_function=self.f)
-
-        # Copy the original model weights
-        copy_model.build(self.gender_detection_mlp_model.input_shape)
-        copy_model.set_weights(self.gender_detection_mlp_model.get_weights())
-
-        # Add activation layer
-        old_outputs = [self.gender_detection_mlp_model.get_layer(name=name) for name in copy_model.output_names]
-        new_outputs = [Activation(old_output.activation)(output) if old_output.activation else output for
-                       output, old_output in zip(copy_model.outputs, old_outputs)]
-        copy_model = Model(copy_model.inputs, new_outputs)
-
-        # New model : output with no activation applied
-        no_activation_outputs = [copy_model.get_layer(name=name).output for name in
-                                 self.gender_detection_mlp_model.output_names]
-        no_activation_model = Model(copy_model.inputs, no_activation_outputs)
-
-        # New inference
-        return no_activation_model.predict(feat, verbose=0)
-
     def __call__(self, fpath, tmpdir=None):
         """
         Return Voice Femininity Score of a given file with values before last sigmoid activation :
@@ -310,10 +272,7 @@ Current chosen device : %s
                 if len(gender_pred) > 1:
                     gender_pred = np.squeeze(gender_pred)
 
-                # Get score before sigmoid activation
-                x_before_sigmoid = self.get_value_before_last_activation(x)
-
                 # Femininity score (from binary predictions)
                 score, _ = get_femininity_score(gender_pred, annot_vad, duration)
 
-                return score, x_before_sigmoid
+                return score
