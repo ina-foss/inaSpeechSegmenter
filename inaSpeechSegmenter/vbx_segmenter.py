@@ -103,7 +103,6 @@ def get_femininity_score(g_pred, a_vad):
     # Keep segment label whose segment midpoint is in a speech segment
     res = [l for seg, _, _ in a_vad.itertracks(yield_label=True) for m, l in zip(df_mid_seg['mid'], df_mid_seg['lab'])
            if seg.start < m < seg.end]
-    assert set(res) == {"female", "male"}, "Associated prediction labels are not in ['female', 'male']"
     n_female = res.count("female")
 
     return n_female / len(res), len(res)
