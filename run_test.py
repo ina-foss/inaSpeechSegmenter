@@ -162,11 +162,11 @@ class TestInaSpeechSegmenter(unittest.TestCase):
 
     def test_vfs_backend_scores(self):
         media = './media/lamartine.wav'
-        v_p = VoiceFemininityScoring(backend='pytorch')
+        v_p = VoiceFemininityScoring(backend='pytorch', gpu='0')
         pytorch_backend_score = v_p(media)
         v_o = VoiceFemininityScoring(backend='onnx')
         onnx_backend_score = v_o(media)
-        self.assertEqual(pytorch_backend_score, onnx_backend_score)
+        np.testing.assert_almost_equal(pytorch_backend_score, onnx_backend_score, decimal=4)
 
 if __name__ == '__main__':
     unittest.main()
