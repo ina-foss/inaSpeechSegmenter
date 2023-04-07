@@ -39,37 +39,38 @@ def get_embedding(fea, model, device, label_name=None, input_name=None, backend=
                          [np.newaxis, :, :]})[0].squeeze()
 
 
-def xvector_extraction(model, basename, fea, start, slen, seg_len, seg_jump, label_name, input_name, duration, backend,
+@torch.no_grad()
+def xvector_extraction(model, basename, fea, start, slen, winlen, step, label_name, input_name, duration, backend,
                        device, save_seg=False):
     xvectors = []
     content = []
 
-    for start in range(0, slen - seg_len, seg_jump):
-        data = fea[start:start + seg_len]
+    for start in range(0, slen - winlen, step):
+        data = fea[start:start + winlen]
         xvector = get_embedding(data, model, device, label_name=label_name, input_name=input_name, backend=backend)
-        key = f'{basename}_{start:08}-{(start + seg_len):08}'
+        key = f'{basename}_{start:08}-{(start + winlen):08}'
         if np.isnan(xvector).any():
             logger.warning(f'NaN found, not processing: {key}{os.linesep}')
         else:
             seg_start = round(start / 100.0, 3)
-            seg_end = round(start / 100.0 + seg_len / 100.0, 3)
+            seg_end = round(start / 100.0 + winlen / 100.0, 3)
             if save_seg:
                 content.append(f'{key} {basename} {seg_start} {seg_end}{os.linesep}')
-            xvectors.append((key, xvector))
+            xvectors.append((key, (seg_start, seg_end), xvector))
 
     #  Last segment
-    if slen - start - seg_jump >= 10:
-        data = fea[start + seg_jump:slen]
+    if slen - start - step >= 10:
+        data = fea[start + step:slen]
         xvector = get_embedding(data, model, device, label_name=label_name, input_name=input_name, backend=backend)
-        key = f'{basename}_{(start + seg_jump):08}-{slen:08}'
+        key = f'{basename}_{(start + step):08}-{slen:08}'
         if np.isnan(xvector).any():
             logger.warning(f'NaN found, not processing: {key}{os.linesep}')
         else:
-            seg_start = round((start + seg_jump) / 100.0, 3)
+            seg_start = round((start + step) / 100.0, 3)
             seg_end = round(duration, 3)
             if save_seg:
                 content.append(f'{key} {basename} {seg_start} {seg_end}{os.linesep}')
-            xvectors.append((key, xvector))
+            xvectors.append((key, (seg_start, seg_end), xvector))
 
     if save_seg:
         f = open(basename + ".seg", "w")
@@ -93,30 +94,26 @@ def annot_to_df(annotation):
     return df
 
 
-def get_femininity_score(g_pred, a_vad, dur):
-    a_temp, res = Annotation(), Annotation()
-    for i, p in enumerate(g_pred):
-        start = i * 0.24
-        stop = start + 1.44
-        if stop > dur:
-            stop = dur
-        lab = "female" if (p >= 0.5) else "male"
-        a_temp[Segment(start, stop), '_'] = lab
-    for seg, _, lab in a_temp.itertracks(yield_label=True):
-        mid = seg.middle
-        for speech in a_vad.label_timeline("speech"):
-            if (mid > speech.start) and (mid < speech.end):
-                res[seg] = lab
+def get_femininity_score(g_pred, a_vad):
+    # Get middle of prediction segments
+    mid_lab_tuples = [(start + (stop - start) / 2, "female" if (pred >= 0.5) else "male") for start, stop, pred in
+                      g_pred]
+    df_mid_seg = pd.DataFrame.from_records(mid_lab_tuples, columns=["mid", "lab"])
 
-    assert len(res) > 0, "No speech segment detected."
+    # Keep segment label whose segment midpoint is in a speech segment
+    res = [l for seg, _, _ in a_vad.itertracks(yield_label=True) for m, l in zip(df_mid_seg['mid'], df_mid_seg['lab'])
+           if seg.start < m < seg.end]
+    assert set(res) == {"female", "male"}, "Associated prediction labels is not in ['female', 'male']"
+    n_female = res.count("female")
 
-    return len(res.label_timeline("female")) / len(res), res
+    return n_female / len(res), res
 
 
 def get_annot_VAD(vad_tuples):
     annot_vad = Annotation()
     for lab, start, end in vad_tuples:
-        annot_vad[Segment(start, end), '_'] = lab
+        if lab == "speech":
+            annot_vad[Segment(start, end), '_'] = lab
     return annot_vad
 
 
@@ -142,14 +139,13 @@ def launch_ffmpeg(medianame, tmpdir, start_sec=None, stop_sec=None):
         assert p.returncode == 0, error
 
         sig, sr = sf.read(f'{tmpwav}')
-        dur = len(sig) / sr
+    dur = len(sig) / sr
 
-        return sig, sr, dur
+    return sig, sr, dur
 
 
 class VoiceFemininityScoring:
-    def __init__(self, seg_jump=24, seg_len=144, feat_dim=64, embed_dim=256, backend='onnx', gpu='',
-                 xvector_model_name="ResNet101", save_segments=False, gd_model_criteria="bgc"):
+    def __init__(self, backend='onnx', gpu='', save_segments=False, gd_model_criteria="bgc"):
         """
         Load VBx model weights
         """
@@ -157,10 +153,10 @@ class VoiceFemininityScoring:
 
         assert backend in ['onnx', 'pytorch'], "Backend should be 'pytorch' or 'onnx'."
         self.backend = backend
-        self.seg_jump = seg_jump
-        self.seg_len = seg_len
-        self.feat_dim = feat_dim
-        self.embed_dim = embed_dim
+        self.step = 24
+        self.winlen = 144
+        self.feat_dim = 64
+        self.embed_dim = 256
         self.save_segments = save_segments
 
         if gpu != '':
@@ -180,7 +176,7 @@ If you want to use a GPU with backend='pytorch', specify it in the initializatio
 Current chosen device : %s
                 """ % self.device)
             model_path = get_file("raw_81.pth", url + "raw_81.pth", cache_dir="interspeech23")
-            model = eval(xvector_model_name)(feat_dim=self.feat_dim, embed_dim=self.embed_dim)
+            model = ResNet101(feat_dim=self.feat_dim, embed_dim=self.embed_dim)
             model = model.to(self.device)
             checkpoint = torch.load(model_path, map_location=self.device)
             model.load_state_dict(checkpoint['state_dict'], strict=False)
@@ -199,6 +195,7 @@ Current chosen device : %s
 
         self.xvector_model = model
         assert gd_model_criteria in ["bgc", "vfp"], "Gender detection model Criteria must be 'bgc' (default) or 'vfp'"
+        gd_model = None
         if gd_model_criteria == "bgc":
             gd_model = "interspeech2023_all.hdf5"
         elif gd_model_criteria == "vfp":
@@ -231,7 +228,7 @@ Current chosen device : %s
         fea = ft.fbank_htk(seg, window, noverlap, fbank_mx, USEPOWER=True, ZMEANSOURCE=True)
         fea = ft.cmvn_floating_kaldi(fea, LC, RC, norm_vars=False).astype(np.float32)
         slen = len(fea)
-        start = -self.seg_jump
+        start = -self.step
 
         return fea, slen, start
 
@@ -247,32 +244,35 @@ Current chosen device : %s
         """
         basename, ext = os.path.splitext(os.path.basename(fpath))[0], os.path.splitext(os.path.basename(fpath))[1]
 
-        with torch.no_grad():
-            # Read "wav" file
-            signal, samplerate, duration = launch_ffmpeg(fpath, tmpdir)
+        # Read "wav" file
+        signal, samplerate, duration = launch_ffmpeg(fpath, tmpdir)
 
-            # process segment only if longer than 0.01s
-            if signal.shape[0] > 0.01 * samplerate:
+        # process segment only if longer than 0.01s
+        if signal.shape[0] > 0.01 * samplerate:
 
-                # Processing features (mel bands extraction)
-                features, slen, start = self.get_features(signal, samplerate)
+            # Processing features (mel bands extraction)
+            features, slen, start = self.get_features(signal, samplerate)
 
-                # Get xvector embeddings
-                x_vectors = xvector_extraction(self.xvector_model, basename, features, start, slen, self.seg_len,
-                                               self.seg_jump, self.label_name, self.input_name, duration,
-                                               self.backend, device=self.device, save_seg=self.save_segments)
+            # Get xvector embeddings
+            x_vectors = xvector_extraction(self.xvector_model, basename, features, start, slen, self.winlen,
+                                           self.step, self.label_name, self.input_name, duration,
+                                           self.backend, device=self.device, save_seg=self.save_segments)
+            # Applying voice activity detection
+            vad_seg = self.vad(fpath)
+            annot_vad = get_annot_VAD(vad_seg)
+            assert annot_vad.label_duration("speech"), "No speech segment detected."
 
-                # Applying voice activity detection
-                vad_seg = self.vad(fpath)
-                annot_vad = get_annot_VAD(vad_seg)
+            # Applying gender detection (pretrained Multi layer perceptron)
+            x = np.asarray([x * 10 for _, _, x in x_vectors])
+            gender_pred = self.gender_detection_mlp_model.predict(x, verbose=0)
+            if len(gender_pred) > 1:
+                gender_pred = np.squeeze(gender_pred)
 
-                # Applying gender detection (pretrained Multi layer perceptron)
-                x = np.asarray([x * 10 for _, x in x_vectors])
-                gender_pred = self.gender_detection_mlp_model.predict(x, verbose=0)
-                if len(gender_pred) > 1:
-                    gender_pred = np.squeeze(gender_pred)
+            # Link segment start/stop from x-vectors extraction to gender predictions
+            gender_pred = np.asarray(
+                [(segtup[0], segtup[1], pred) for (_, segtup, _), pred in zip(x_vectors, gender_pred)])
 
-                # Femininity score (from binary predictions)
-                score, _ = get_femininity_score(gender_pred, annot_vad, duration)
+            # Femininity score (from binary predictions)
+            score, _ = get_femininity_score(gender_pred, annot_vad)
 
-                return score
+            return score
