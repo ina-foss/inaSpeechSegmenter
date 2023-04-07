@@ -29,6 +29,7 @@ import os
 import warnings
 from inaSpeechSegmenter import Segmenter
 from inaSpeechSegmenter.features import _wav2feats
+from inaSpeechSegmenter.vbx_segmenter import VoiceFemininityScoring
 import filecmp
 import pandas as pd
 import numpy as np
@@ -144,6 +145,28 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         self.assertEqual(sorted(lsrc), ['/my_/source_4', 'my_source_1', 'my_source_2', 'my_source_3', 'my_source_5', 'my_source_6', 'my_source_7'])
         self.assertEqual(sorted(ldst), ['my_dest_1', 'my_dest_2', 'my_dest_3', 'my_dest_4', 'my_dest_5', 'my_dest_6', 'my_dest_7@@@!!'])
 
+    def test_init_vfs(self):
+        vfs = VoiceFemininityScoring()
+
+    def test_vf_score(self):
+        media = './media/lamartine.wav'
+        desired_vfp_score = 0.553191
+        vfs = VoiceFemininityScoring()
+        d = 6
+        np.testing.assert_almost_equal(
+            vfs(media),
+            desired_vfp_score,
+            decimal=d,
+            err_msg='Voice Femininity Score :\nArrays are not almost equal to %d decimals' % d
+        )
+
+    def test_vfs_backend_scores(self):
+        media = './media/lamartine.wav'
+        v_p = VoiceFemininityScoring(backend='pytorch')
+        pytorch_backend_score = v_p(media)
+        v_o = VoiceFemininityScoring(backend='onnx')
+        onnx_backend_score = v_o(media)
+        self.assertEqual(pytorch_backend_score, onnx_backend_score)
 
 if __name__ == '__main__':
     unittest.main()
