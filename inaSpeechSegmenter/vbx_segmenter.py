@@ -106,7 +106,7 @@ def get_femininity_score(g_pred, a_vad):
     assert set(res) == {"female", "male"}, "Associated prediction labels are not in ['female', 'male']"
     n_female = res.count("female")
 
-    return n_female / len(res), res
+    return n_female / len(res), len(res)
 
 
 def get_annot_VAD(vad_tuples):
@@ -241,6 +241,7 @@ Current chosen device : %s
                 * operate voice activity detection using ISS VAD ('smn')
                 * apply gender detection model and compute femininity score
                 * apply gender detection model without applying last sigmoid activation
+                * return score, duration of detected speech and number of retained x-vectors
         """
         basename, ext = os.path.splitext(os.path.basename(fpath))[0], os.path.splitext(os.path.basename(fpath))[1]
 
@@ -260,7 +261,7 @@ Current chosen device : %s
             # Applying voice activity detection
             vad_seg = self.vad(fpath)
             annot_vad = get_annot_VAD(vad_seg)
-            assert annot_vad.label_duration("speech"), "No speech segment detected."
+            speech_duration = annot_vad.label_duration("speech")
 
             # Applying gender detection (pretrained Multi layer perceptron)
             x = np.asarray([x * 10 for _, _, x in x_vectors])
@@ -273,6 +274,9 @@ Current chosen device : %s
                 [(segtup[0], segtup[1], pred) for (_, segtup, _), pred in zip(x_vectors, gender_pred)])
 
             # Femininity score (from binary predictions)
-            score, _ = get_femininity_score(gender_pred, annot_vad)
+            if speech_duration:
+                score, nb_xvector = get_femininity_score(gender_pred, annot_vad)
+            else:
+                score, nb_xvector = None, None
 
-            return score
+            return score, speech_duration, nb_xvector
