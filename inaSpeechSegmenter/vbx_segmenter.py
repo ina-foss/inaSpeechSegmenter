@@ -96,14 +96,14 @@ def annot_to_df(annotation):
 
 def get_femininity_score(g_pred, a_vad):
     # Get middle of prediction segments
-    mid_lab_tuples = [(start + (stop - start) / 2, "female" if (pred >= 0.5) else "male") for start, stop, pred in
+    mid_lab_tuples = [((start + stop) / 2, "female" if (pred >= 0.5) else "male") for start, stop, pred in
                       g_pred]
     df_mid_seg = pd.DataFrame.from_records(mid_lab_tuples, columns=["mid", "lab"])
 
     # Keep segment label whose segment midpoint is in a speech segment
     res = [l for seg, _, _ in a_vad.itertracks(yield_label=True) for m, l in zip(df_mid_seg['mid'], df_mid_seg['lab'])
            if seg.start < m < seg.end]
-    assert set(res) == {"female", "male"}, "Associated prediction labels is not in ['female', 'male']"
+    assert set(res) == {"female", "male"}, "Associated prediction labels are not in ['female', 'male']"
     n_female = res.count("female")
 
     return n_female / len(res), res
