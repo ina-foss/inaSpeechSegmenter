@@ -150,8 +150,8 @@ class TestInaSpeechSegmenter(unittest.TestCase):
 
     def test_vf_score(self):
         media = './media/lamartine.wav'
-        desired_vfp_score = 0.553191
-        vfs = VoiceFemininityScoring()
+        desired_vfp_score = 0.534884
+        vfs = VoiceFemininityScoring(gd_model_criteria="vfp")
         d = 6
         np.testing.assert_almost_equal(
             vfs(media)[0],

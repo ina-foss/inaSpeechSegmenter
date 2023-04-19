@@ -11,7 +11,7 @@ import h5py
 
 import keras
 from keras.utils import get_file
-from pyannote.core import Segment, Annotation
+from pyannote.core import Segment, Annotation, Timeline
 
 from inaSpeechSegmenter.resnet import ResNet101
 import inaSpeechSegmenter.features_vbx as ft
@@ -94,18 +94,54 @@ def annot_to_df(annotation):
     return df
 
 
-def get_femininity_score(g_pred, a_vad):
-    # Get middle of prediction segments
-    mid_lab_tuples = [((start + stop) / 2, "female" if (pred >= 0.5) else "male") for start, stop, pred in
-                      g_pred]
-    df_mid_seg = pd.DataFrame.from_records(mid_lab_tuples, columns=["mid", "lab"])
+def is_mid_speech(start, stop, a_vad):
+    """
+    Compute midpoint of segment and return True if it's a speech detected segment (from Voice activity detection)
+    """
+    m = (start + stop) / 2
+    is_speech = [True if seg.start < m < seg.end else False for seg, _, _ in a_vad.itertracks(yield_label=True)]
+    return np.any(is_speech)
 
-    # Keep segment label whose segment midpoint is in a speech segment
-    res = [l for seg, _, _ in a_vad.itertracks(yield_label=True) for m, l in zip(df_mid_seg['mid'], df_mid_seg['lab'])
-           if seg.start < m < seg.end]
-    n_female = res.count("female")
 
-    return n_female / len(res), len(res)
+def get_binary_gender_label(p):
+    return "female" if (p >= 0.5) else "male"
+
+
+def add_needed_vectors(a_res, t_mid):
+    min_pred = round(0.5 * len(t_mid))
+    if len(a_res) < min_pred:
+        # Sort array descending
+        t_mid = np.asarray(t_mid)
+        t_mid = t_mid[t_mid[:, 0].argsort()][::-1]
+        diff = min_pred - len(a_res)
+        for _, s, p in t_mid[len(a_res):len(a_res) + diff]:
+            a_res[s, '_'] = get_binary_gender_label(p)
+
+    return a_res
+
+
+def get_femininity_score(g_pred, a_vad, overlap_tresh):
+    res = Annotation()
+    midpoint_seg = []
+
+    for start, stop, pred in g_pred:
+
+        # Keep segment label whose segment midpoint is in a speech segment
+        if is_mid_speech(start, stop, a_vad):
+            seg_total_duration = stop - start
+            seg_cropped = Timeline([Segment(start, stop)]).crop(a_vad.get_timeline())
+            # At least x % of the segment is detected as speech
+            if seg_cropped.duration() / seg_total_duration >= overlap_tresh:
+                res[Segment(start, stop), '_'] = get_binary_gender_label(pred)
+            # Save overlap ratio with vad
+            midpoint_seg.append(((seg_cropped.duration() / seg_total_duration), Segment(start, stop), pred))
+
+    # Add vectors with vad-overlap if too many preds have been removed
+    # Keep at least 50% preds whose midpoint is in speech segment
+    res = add_needed_vectors(res, midpoint_seg)
+
+    # Return binary score and number of retained predictions
+    return len(res.label_timeline("female")) / len(res), len(res)
 
 
 def get_annot_VAD(vad_tuples):
@@ -197,12 +233,13 @@ Current chosen device : %s
         gd_model = None
         if gd_model_criteria == "bgc":
             gd_model = "interspeech2023_all.hdf5"
+            self.vad_thresh = 0.7
         elif gd_model_criteria == "vfp":
             gd_model = "interspeech2023_cvfr.hdf5"
+            self.vad_thresh = 0.62
         self.gender_detection_mlp_model = keras.models.load_model(
             get_file(gd_model, url + gd_model, cache_dir="interspeech23"),
             compile=False)
-
         self.vad = Segmenter(vad_engine='smn', detect_gender=False)
 
     def get_features(self, signal, sr, LC=150, RC=149):
@@ -231,7 +268,7 @@ Current chosen device : %s
 
         return fea, slen, start
 
-    def __call__(self, fpath, tmpdir=None):
+    def __call__(self, fpath, vad_method="mid", tmpdir=None):
         """
         Return Voice Femininity Score of a given file with values before last sigmoid activation :
                 * convert file to wav 16k mono with ffmpeg
@@ -239,7 +276,6 @@ Current chosen device : %s
                 * get VBx features
                 * operate voice activity detection using ISS VAD ('smn')
                 * apply gender detection model and compute femininity score
-                * apply gender detection model without applying last sigmoid activation
                 * return score, duration of detected speech and number of retained x-vectors
         """
         basename, ext = os.path.splitext(os.path.basename(fpath))[0], os.path.splitext(os.path.basename(fpath))[1]
@@ -274,8 +310,8 @@ Current chosen device : %s
 
             # Femininity score (from binary predictions)
             if speech_duration:
-                score, nb_xvector = get_femininity_score(gender_pred, annot_vad)
+                score, nb_vectors = get_femininity_score(gender_pred, annot_vad, overlap_tresh=self.vad_thresh)
             else:
-                score, nb_xvector = None, None
+                score, nb_vectors = None, 0
 
-            return score, speech_duration, nb_xvector
+            return score, speech_duration, nb_vectors
