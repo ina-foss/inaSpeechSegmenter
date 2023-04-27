@@ -43,10 +43,29 @@ from skimage.util import view_as_windows as vaw
 from pyannote.algorithms.utils.viterbi import viterbi_decoding
 from .viterbi_utils import pred2logemission, diag_trans_exp, log_trans_exp
 
-from .features import media2feats
+#from .features import media2feats
+from .io import media2sig16kmono
+from .sidekit_mfcc import mfcc
+import warnings
+
 from .export_funcs import seg2csv, seg2textgrid
 
+def _media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg):
+    sig = media2sig16kmono(medianame, tmpdir, start_sec, stop_sec, ffmpeg, 'float32')
+    with warnings.catch_warnings():
+        # ignore warnings resulting from empty signals parts
+        warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning)
+        _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
+        
+    # Management of short duration segments
+    difflen = 0
+    if len(loge) < 68:
+        difflen = 68 - len(loge)
+        warnings.warn("media %s duration is short. Robust results require length of at least 720 milliseconds" % medianame)
+        mspec = np.concatenate((mspec, np.ones((difflen, 24)) * np.min(mspec)))
+        #loge = np.concatenate((loge, np.ones(difflen) * np.min(mspec)))
 
+    return mspec, loge, difflen
 
 def _energy_activity(loge, ratio):
     threshold = np.mean(loge[np.isfinite(loge)]) + np.log(ratio)
@@ -275,7 +294,7 @@ class Segmenter:
         * stop_sec (seconds): sound stream after stop_sec won't be processed
         """
         
-        mspec, loge, difflen = media2feats(medianame, tmpdir, start_sec, stop_sec, self.ffmpeg)
+        mspec, loge, difflen = _media2feats(medianame, tmpdir, start_sec, stop_sec, self.ffmpeg)
         if start_sec is None:
             start_sec = 0
         # do segmentation   
@@ -349,7 +368,7 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
         itry = 0
         while ret is None and itry < nbtry:
             try:
-                ret = media2feats(src, tmpdir, None, None, ffmpeg)
+                ret = _media2feats(src, tmpdir, None, None, ffmpeg)
             except:
                 itry += 1
                 errmsg = sys.exc_info()[0]

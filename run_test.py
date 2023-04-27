@@ -28,7 +28,9 @@ import unittest
 import os
 import warnings
 from inaSpeechSegmenter import Segmenter
-from inaSpeechSegmenter.features import _wav2feats
+#from inaSpeechSegmenter.features import _wav2feats
+from inaSpeechSegmenter.segmenter import _media2feats
+
 import filecmp
 import pandas as pd
 import numpy as np
@@ -39,18 +41,18 @@ from scripts.ina_speech_segmenter_pyro_server import GenderJobServer
 class TestInaSpeechSegmenter(unittest.TestCase):
     
     def test_init(self):
-        seg = Segmenter()
+        Segmenter()
 
     def test_execution(self):
         # if this test fails, then you should check to correctness of your
         # tensorflow installation
         seg = Segmenter()
-        ret = seg('./media/musanmix.mp3')
+        seg('./media/musanmix.mp3')
 
     def test_silence_features(self):
         # test empty signal do not result in warnings
         with warnings.catch_warnings(record=True) as w:
-            ret = _wav2feats('./media/silence2sec.wav')
+            _media2feats('./media/silence2sec.wav', None, None, None, 'ffmpeg')
             assert len(w) == 0, [str(e) for e in w]
 
         
