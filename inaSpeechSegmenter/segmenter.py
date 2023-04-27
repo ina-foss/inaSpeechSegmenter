@@ -43,7 +43,6 @@ from skimage.util import view_as_windows as vaw
 from pyannote.algorithms.utils.viterbi import viterbi_decoding
 from .viterbi_utils import pred2logemission, diag_trans_exp, log_trans_exp
 
-#from .features import media2feats
 from .io import media2sig16kmono
 from .sidekit_mfcc import mfcc
 import warnings
@@ -63,7 +62,6 @@ def _media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg):
         difflen = 68 - len(loge)
         warnings.warn("media %s duration is short. Robust results require length of at least 720 milliseconds" % medianame)
         mspec = np.concatenate((mspec, np.ones((difflen, 24)) * np.min(mspec)))
-        #loge = np.concatenate((loge, np.ones(difflen) * np.min(mspec)))
 
     return mspec, loge, difflen
 
@@ -233,8 +231,6 @@ class Segmenter:
             raise(Exception("""ffmpeg program not found"""))
         self.ffmpeg = ffmpeg
 
-#        self.graph = KB.get_session().graph # To prevent the issue of keras with tensorflow backend for async tasks
-
         # set energic ratio for 1st VAD
         self.energy_ratio = energy_ratio
 
@@ -353,7 +349,6 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
     while ret is None and len(lin) > 0:
         src = lin.pop(0)
         dst = lout.pop(0)
-#        print('popping', src)
         
         # if file exists: skipp
         if skipifexist and os.path.exists(dst):
@@ -383,15 +378,10 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
 
     
 def featGenerator(ilist, olist, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, nbtry=1, trydelay=2.):
-#    print('init feat gen', len(ilist))
     thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay])
     thread.start()
     while True:
         ret, msg = thread.join()
-#        print('join done', len(ilist))
-#        print('new list', ilist)
-        #ilist = ilist[len(msg):]
-        #olist = olist[len(msg):]
         if len(ilist) == 0:
             break
         thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay])
