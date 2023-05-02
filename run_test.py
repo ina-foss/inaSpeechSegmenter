@@ -148,7 +148,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         self.assertEqual(sorted(ldst), ['my_dest_1', 'my_dest_2', 'my_dest_3', 'my_dest_4', 'my_dest_5', 'my_dest_6', 'my_dest_7@@@!!'])
 
     def test_init_vfs(self):
-        vfs = VoiceFemininityScoring()
+        +VoiceFemininityScoring()
 
     def test_vf_score(self):
         media = './media/lamartine.wav'
@@ -164,7 +164,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
 
     def test_vfs_backend_scores(self):
         media = './media/lamartine.wav'
-        v_p = VoiceFemininityScoring(backend='pytorch', gpu='0')
+        v_p = VoiceFemininityScoring(backend='pytorch')
         pytorch_backend_score = v_p(media)[0]
         v_o = VoiceFemininityScoring(backend='onnx')
         onnx_backend_score = v_o(media)[0]
