@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from abc import ABC, abstractmethod
 import numpy as np
 import onnxruntime as ort
 import logging
@@ -149,8 +150,8 @@ class VoiceFemininityScoring:
         Return Voice Femininity Score of a given file with values before last sigmoid activation :
                 * convert file to wav 16k mono with ffmpeg
                 * operate Mel bands extraction
-                * get VBx features
                 * operate voice activity detection using ISS VAD ('smn')
+                * get VBx features
                 * apply gender detection model and compute femininity score
                 * return score, duration of detected speech and number of retained x-vectors
         """
@@ -191,10 +192,18 @@ class VoiceFemininityScoring:
         return score, speech_duration, nb_vectors
 
 
-class VBxExtractor:
+class VBxExtractor(ABC):
     """
-    Extractor is an abstract class performing xvector extraction.
+    VBxExtractor is an abstract class performing xvector extraction.
     """
+    @abstractmethod
+    def __init__(self):
+        """
+        Method to be implemented by each extractor.
+        Initialize model according to the chosen backend ('pytorch' or 'onnx').
+        """
+        pass
+
     def __call__(self, basename, fea, duration):
         xvectors = []
         start = 0
@@ -224,7 +233,6 @@ class VBxExtractor:
 
 
 class OnnxBackendExtractor(VBxExtractor):
-    # Class to perform VBx-based extraction when chosen backend is ONNX
     def __init__(self):
         model_path = get_remote("final.onnx")
         so = ort.SessionOptions()
