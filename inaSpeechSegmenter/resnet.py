@@ -1,4 +1,8 @@
-'''ResNet in PyTorch.
+'''
+Code from VBHMM x-vectors Diarization (aka VBx)
+https://github.com/BUTSpeechFIT/VBx/blob/master/VBx/models/resnet.py
+
+ResNet in PyTorch.
 
 For Pre-activation ResNet, see 'preact_resnet.py'.
 
@@ -69,24 +73,6 @@ class Bottleneck(nn.Module):
         out += self.shortcut(x)
         out = F.relu(out)
         return out
-
-
-class SELayer(nn.Module):
-    def __init__(self, channel, reduction=16):
-        super(SELayer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(channel, channel // reduction, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(channel // reduction, channel, bias=False),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
-        y = self.fc(y).view(b, c, 1, 1)
-        return x * y.expand_as(x)
 
 
 class ResNet(nn.Module):

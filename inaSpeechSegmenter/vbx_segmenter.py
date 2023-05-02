@@ -1,91 +1,28 @@
 import os
 import pandas as pd
 import numpy as np
-import tempfile
-from subprocess import Popen, PIPE
 import onnxruntime as ort
 import logging
 import torch.backends
-import soundfile as sf
-import h5py
 
 import keras
-from keras.utils import get_file
 from pyannote.core import Segment, Annotation, Timeline
 
-from inaSpeechSegmenter.resnet import ResNet101
-import inaSpeechSegmenter.features_vbx as ft
-from inaSpeechSegmenter.segmenter import Segmenter
+from .resnet import ResNet101
+from .features_vbx import povey_window, mel_fbank_mx, add_dither, fbank_htk, cmvn_floating_kaldi
+from .segmenter import Segmenter
+from .io import media2sig16kmono
+from .remote_utils import get_remote
 
 torch.backends.cudnn.enabled = True
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-
-def initialize_gpus(gpu):
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpu
-
-
-def get_embedding(fea, model, device, label_name=None, input_name=None, backend='pytorch'):
-    if backend == 'pytorch':
-        data = torch.from_numpy(fea).to(device)
-        data = data[None, :, :]
-        data = torch.transpose(data, 1, 2)
-        spk_embeds = model(data)
-        return spk_embeds.data.cpu().numpy()[0]
-    elif backend == 'onnx':
-        return model.run([label_name],
-                         {input_name: fea.astype(np.float32).transpose()
-                         [np.newaxis, :, :]})[0].squeeze()
-
-
-@torch.no_grad()
-def xvector_extraction(model, basename, fea, start, slen, winlen, step, label_name, input_name, duration, backend,
-                       device, save_seg=False):
-    xvectors = []
-    content = []
-
-    for start in range(0, slen - winlen, step):
-        data = fea[start:start + winlen]
-        xvector = get_embedding(data, model, device, label_name=label_name, input_name=input_name, backend=backend)
-        key = f'{basename}_{start:08}-{(start + winlen):08}'
-        if np.isnan(xvector).any():
-            logger.warning(f'NaN found, not processing: {key}{os.linesep}')
-        else:
-            seg_start = round(start / 100.0, 3)
-            seg_end = round(start / 100.0 + winlen / 100.0, 3)
-            if save_seg:
-                content.append(f'{key} {basename} {seg_start} {seg_end}{os.linesep}')
-            xvectors.append((key, (seg_start, seg_end), xvector))
-
-    #  Last segment
-    if slen - start - step >= 10:
-        data = fea[start + step:slen]
-        xvector = get_embedding(data, model, device, label_name=label_name, input_name=input_name, backend=backend)
-        key = f'{basename}_{(start + step):08}-{slen:08}'
-        if np.isnan(xvector).any():
-            logger.warning(f'NaN found, not processing: {key}{os.linesep}')
-        else:
-            seg_start = round((start + step) / 100.0, 3)
-            seg_end = round(duration, 3)
-            if save_seg:
-                content.append(f'{key} {basename} {seg_start} {seg_end}{os.linesep}')
-            xvectors.append((key, (seg_start, seg_end), xvector))
-
-    if save_seg:
-        f = open(basename + ".seg", "w")
-        for c in content:
-            f.write(c)
-        f.close()
-
-    return xvectors
-
-
-def save_embeddings(tuple_xvec, name):
-    d = {k: vector for k, vector in tuple_xvec}
-    with h5py.File(f'{name}_xvectors.hdf5', 'w') as f:
-        for key in d:
-            f.create_dataset(key, data=d[key])
+STEP = 24
+WINLEN = 144
+FEAT_DIM = 64
+EMBED_DIM = 256
+SR = 16000
 
 
 def annot_to_df(annotation):
@@ -152,83 +89,46 @@ def get_annot_VAD(vad_tuples):
     return annot_vad
 
 
-def launch_ffmpeg(medianame, tmpdir, start_sec=None, stop_sec=None):
-    base, _ = os.path.splitext(os.path.basename(medianame))
+def get_features(signal, LC=150, RC=149):
+    """
+    This code function is entirely copied from the VBx script 'predict.py'
+    https://github.com/BUTSpeechFIT/VBx/blob/master/VBx/predict.py
+    """
 
-    with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
-        # build ffmpeg command line
-        tmpwav = tmpdirname + '/' + base + '.wav'
-        args = ['ffmpeg', '-y', '-i', medianame, '-ar', '16000', '-ac', '1']
-        if start_sec is None:
-            start_sec = 0
-        else:
-            args += ['-ss', '%f' % start_sec]
+    noverlap = 240
+    winlen = 400
+    window = povey_window(winlen)
+    fbank_mx = mel_fbank_mx(
+        winlen, SR, NUMCHANS=FEAT_DIM, LOFREQ=20.0, HIFREQ=7600, htk_bug=False)
 
-        if stop_sec is not None:
-            args += ['-to', '%f' % stop_sec]
-        args += [tmpwav]
-
-        # launch ffmpeg
-        p = Popen(args, stdout=PIPE, stderr=PIPE)
-        output, error = p.communicate()
-        assert p.returncode == 0, error
-
-        sig, sr = sf.read(f'{tmpwav}')
-    dur = len(sig) / sr
-
-    return sig, sr, dur
+    np.random.seed(3)  # for reproducibility
+    signal = add_dither((signal * 2 ** 15).astype(int))
+    seg = np.r_[signal[noverlap // 2 - 1::-1], signal, signal[-1:-winlen // 2 - 1:-1]]
+    fea = fbank_htk(seg, window, noverlap, fbank_mx, USEPOWER=True, ZMEANSOURCE=True)
+    fea = cmvn_floating_kaldi(fea, LC, RC, norm_vars=False).astype(np.float32)
+    return fea
 
 
 class VoiceFemininityScoring:
-    def __init__(self, backend='onnx', gpu='', save_segments=False, gd_model_criteria="bgc"):
+    """
+    Perform VBx features extraction and give a voice femininity score.
+    """
+    def __init__(self, backend='onnx', gd_model_criteria="bgc"):
         """
-        Load VBx model weights
+        Load VBx model weights according to the chosen backend
+        (See : https://github.com/BUTSpeechFIT/VBx)
+        Load Voice activity detection from inaSpeechSegmenter and finally
+        load Gender detection model to estimate voice femininity.
         """
-        url = 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/interspeech23/'
 
+        # VBx Extractor
         assert backend in ['onnx', 'pytorch'], "Backend should be 'pytorch' or 'onnx'."
-        self.backend = backend
-        self.step = 24
-        self.winlen = 144
-        self.feat_dim = 64
-        self.embed_dim = 256
-        self.save_segments = save_segments
+        if backend == "onnx":
+            self.xvector_model = OnnxBackendExtractor()
+        # elif backend == "pytorch":
+        #     self.xvector_model = TorchBackendExtractor()
 
-        if gpu != '':
-            logger.info(f'Using GPU: {gpu}')
-            # gpu configuration
-            initialize_gpus(gpu)
-            self.device = torch.device(device='cuda')
-        else:
-            self.device = torch.device(device='cpu')
-
-        model, label_name, input_name = '', None, None
-
-        if backend == 'pytorch':
-            if gpu == '':
-                print("""
-If you want to use a GPU with backend='pytorch', specify it in the initialization parameters
-Current chosen device : %s
-                """ % self.device)
-            model_path = get_file("raw_81.pth", url + "raw_81.pth", cache_dir="interspeech23")
-            model = ResNet101(feat_dim=self.feat_dim, embed_dim=self.embed_dim)
-            model = model.to(self.device)
-            checkpoint = torch.load(model_path, map_location=self.device)
-            model.load_state_dict(checkpoint['state_dict'], strict=False)
-            model.eval()
-            self.input_name = None
-            self.label_name = None
-        elif backend == 'onnx':
-            model_path = get_file("final.onnx", url + "final.onnx", cache_dir="interspeech23")
-            so = ort.SessionOptions()
-            so.log_severity_level = 3
-            model = ort.InferenceSession(model_path, so, providers=["CUDAExecutionProvider"])
-            input_name = model.get_inputs()[0].name
-            label_name = model.get_outputs()[0].name
-            self.input_name = input_name
-            self.label_name = label_name
-
-        self.xvector_model = model
+        # Gender detection model
         assert gd_model_criteria in ["bgc", "vfp"], "Gender detection model Criteria must be 'bgc' (default) or 'vfp'"
         gd_model = None
         if gd_model_criteria == "bgc":
@@ -238,37 +138,13 @@ Current chosen device : %s
             gd_model = "interspeech2023_cvfr.hdf5"
             self.vad_thresh = 0.62
         self.gender_detection_mlp_model = keras.models.load_model(
-            get_file(gd_model, url + gd_model, cache_dir="interspeech23"),
+            get_remote(gd_model),
             compile=False)
+
+        # Voice activity detection model
         self.vad = Segmenter(vad_engine='smn', detect_gender=False)
 
-    def get_features(self, signal, sr, LC=150, RC=149):
-        """
-        This code function is entirely copied from the VBx script 'predict.py'
-        Input :
-            - fpath : path of ".wav" file
-        """
-
-        if sr == 16000:
-            noverlap = 240
-            winlen = 400
-            window = ft.povey_window(winlen)
-            fbank_mx = ft.mel_fbank_mx(
-                winlen, sr, NUMCHANS=self.feat_dim, LOFREQ=20.0, HIFREQ=7600, htk_bug=False)
-        else:
-            raise ValueError(f'Only 16kHz is supported. Got {sr} instead.')
-
-        np.random.seed(3)  # for reproducibility
-        signal = ft.add_dither((signal * 2 ** 15).astype(int))
-        seg = np.r_[signal[noverlap // 2 - 1::-1], signal, signal[-1:-winlen // 2 - 1:-1]]
-        fea = ft.fbank_htk(seg, window, noverlap, fbank_mx, USEPOWER=True, ZMEANSOURCE=True)
-        fea = ft.cmvn_floating_kaldi(fea, LC, RC, norm_vars=False).astype(np.float32)
-        slen = len(fea)
-        start = -self.step
-
-        return fea, slen, start
-
-    def __call__(self, fpath, vad_method="mid", tmpdir=None):
+    def __call__(self, fpath, tmpdir=None):
         """
         Return Voice Femininity Score of a given file with values before last sigmoid activation :
                 * convert file to wav 16k mono with ffmpeg
@@ -281,22 +157,21 @@ Current chosen device : %s
         basename, ext = os.path.splitext(os.path.basename(fpath))[0], os.path.splitext(os.path.basename(fpath))[1]
 
         # Read "wav" file
-        signal, samplerate, duration = launch_ffmpeg(fpath, tmpdir)
+        signal = media2sig16kmono(fpath, tmpdir)
+        duration = len(signal) / SR
 
-        # process segment only if longer than 0.01s
-        if signal.shape[0] > 0.01 * samplerate:
+        # Applying voice activity detection
+        vad_seg = self.vad(fpath)
+        annot_vad = get_annot_VAD(vad_seg)
+        speech_duration = annot_vad.label_duration("speech")
+
+        if speech_duration:
 
             # Processing features (mel bands extraction)
-            features, slen, start = self.get_features(signal, samplerate)
+            features = get_features(signal)
 
             # Get xvector embeddings
-            x_vectors = xvector_extraction(self.xvector_model, basename, features, start, slen, self.winlen,
-                                           self.step, self.label_name, self.input_name, duration,
-                                           self.backend, device=self.device, save_seg=self.save_segments)
-            # Applying voice activity detection
-            vad_seg = self.vad(fpath)
-            annot_vad = get_annot_VAD(vad_seg)
-            speech_duration = annot_vad.label_duration("speech")
+            x_vectors = self.xvector_model(basename, features, duration)
 
             # Applying gender detection (pretrained Multi layer perceptron)
             x = np.asarray([x * 10 for _, _, x in x_vectors])
@@ -308,10 +183,82 @@ Current chosen device : %s
             gender_pred = np.asarray(
                 [(segtup[0], segtup[1], pred) for (_, segtup, _), pred in zip(x_vectors, gender_pred)])
 
-            # Femininity score (from binary predictions)
-            if speech_duration:
-                score, nb_vectors = get_femininity_score(gender_pred, annot_vad, overlap_tresh=self.vad_thresh)
-            else:
-                score, nb_vectors = None, 0
+            score, nb_vectors = get_femininity_score(gender_pred, annot_vad, overlap_tresh=self.vad_thresh)
 
-            return score, speech_duration, nb_vectors
+        else:
+            score, nb_vectors = None, 0
+
+        return score, speech_duration, nb_vectors
+
+
+class VBxExtractor:
+    """
+    Extractor is an abstract class performing xvector extraction.
+    """
+    def __call__(self, basename, fea, duration):
+        xvectors = []
+        start = 0
+        for start in range(0, len(fea) - WINLEN, STEP):
+            data = fea[start:start + WINLEN]
+            xvector = self.get_embedding(data)
+            key = f'{basename}_{start:08}-{(start + WINLEN):08}'
+            if np.isnan(xvector).any():
+                logger.warning(f'NaN found, not processing: {key}{os.linesep}')
+            else:
+                seg_start = round(start / 100.0, 3)
+                seg_end = round(start / 100.0 + WINLEN / 100.0, 3)
+                xvectors.append((key, (seg_start, seg_end), xvector))
+
+        #  Last segment
+        if len(fea) - start - STEP >= 10:
+            data = fea[start + STEP:len(fea)]
+            xvector = self.get_embedding(data)
+            key = f'{basename}_{(start + STEP):08}-{len(fea):08}'
+            if np.isnan(xvector).any():
+                logger.warning(f'NaN found, not processing: {key}{os.linesep}')
+            else:
+                seg_start = round((start + STEP) / 100.0, 3)
+                seg_end = round(duration, 3)
+                xvectors.append((key, (seg_start, seg_end), xvector))
+        return xvectors
+
+
+class OnnxBackendExtractor(VBxExtractor):
+    # Class to perform VBx-based extraction when chosen backend is ONNX
+    def __init__(self):
+        model_path = get_remote("final.onnx")
+        so = ort.SessionOptions()
+        so.log_severity_level = 3
+        model = ort.InferenceSession(model_path, so, providers=["CUDAExecutionProvider"])
+        self.input_name = model.get_inputs()[0].name
+        self.label_name = model.get_outputs()[0].name
+        self.model = model
+
+    def get_embedding(self, fea):
+        return self.model.run(
+            [self.label_name],
+            {self.input_name: fea.astype(np.float32).transpose()[np.newaxis, :, :]}
+        )[0].squeeze()
+
+
+# class TorchBackendExtractor(VBxExtractor):
+#     def __init__(self):
+#         self.device = torch.device(device='cpu')
+#         model_path = get_remote("raw_81.pth")
+#         model = ResNet101(feat_dim=FEAT_DIM, embed_dim=EMBED_DIM)
+#         model = model.to(self.device)
+#         checkpoint = torch.load(model_path, map_location=self.device)
+#         model.load_state_dict(checkpoint['state_dict'], strict=False)
+#         model.eval()
+#         self.model = model
+#
+#     def get_embedding(self, fea, device):
+#         data = torch.from_numpy(fea).to(device)
+#         data = data[None, :, :]
+#         data = torch.transpose(data, 1, 2)
+#         spk_embeds = self.model(data)
+#         return spk_embeds.data.cpu().numpy()[0]
+#
+#     def __call__(self, basename, fea, duration):
+#         with torch.no_grad():
+#             super().__call__(basename, fea, duration)
