@@ -22,6 +22,14 @@ ADD ${u}keras_male_female_cnn.hdf5 \
     ${u}keras_speech_music_noise_cnn.hdf5 \
     /root/.keras/inaSpeechSegmenter/
 
+# download models to use VoiceFemininityScoring
+ARG u='https://github.com/ina-foss/inaSpeechSegmenter/releases/download/interspeech23/'
+ADD ${u}interspeech2023_all.hdf5 \
+    ${u}interspeech2023_cvfr.hdf5 \
+    ${u}final.onnx \
+    ${u}raw_81.pth \
+    /root/.keras/inaSpeechSegmenter/
+
 # make models available to non-root users
 RUN chmod +x /root/
 RUN chmod +r /root/.keras/inaSpeechSegmenter/*
