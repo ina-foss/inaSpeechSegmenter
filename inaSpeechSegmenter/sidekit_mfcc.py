@@ -33,8 +33,8 @@ useful parameters for speaker verification.
 
 
 import numpy
-import soundfile
-import scipy
+# import soundfile
+# import scipy
 from scipy.fftpack.realtransforms import dct
 
 
@@ -49,29 +49,7 @@ __docformat__ = 'reStructuredText'
 
 
 
-wav_flag = "float32"    # Could be "int16"
 PARAM_TYPE = numpy.float32
-
-
-def read_wav(input_file_name):
-    """
-    :param input_file_name:
-    :return:
-    """
-    #with wave.open(input_file_name, "r") as wfh:
-    #    (nchannels, sampwidth, framerate, nframes, comptype, compname) = wfh.getparams()
-    #    raw = wfh.readframes(nframes * nchannels)
-    #    out = struct.unpack_from("%dh" % nframes * nchannels, raw)
-    #    sig = numpy.reshape(numpy.array(out), (-1, nchannels)).squeeze()
-    #    return sig.astype(numpy.float32), framerate, sampwidth
-    nfo = soundfile.info(input_file_name)
-    sig, sample_rate = soundfile.read(input_file_name, dtype=wav_flag)
-    sig = numpy.reshape(numpy.array(sig), (-1, nfo.channels)).squeeze()
-    sig = sig.astype(numpy.float32)
-    return sig, sample_rate, 4
-
-
-
 
 def hz2mel(f, htk=True):
     """Convert an array of frequency in Hz into mel.
