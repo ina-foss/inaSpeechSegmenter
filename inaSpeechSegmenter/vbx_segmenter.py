@@ -125,8 +125,8 @@ class VoiceFemininityScoring:
         assert backend in ['onnx', 'pytorch'], "Backend should be 'pytorch' or 'onnx'."
         if backend == "onnx":
             self.xvector_model = OnnxBackendExtractor()
-        # elif backend == "pytorch":
-        #     self.xvector_model = TorchBackendExtractor()
+        elif backend == "pytorch":
+            self.xvector_model = TorchBackendExtractor()
 
         # Gender detection model
         assert gd_model_criteria in ["bgc", "vfp"], "Gender detection model Criteria must be 'bgc' (default) or 'vfp'"
@@ -230,6 +230,7 @@ class OnnxBackendExtractor(VBxExtractor):
         so = ort.SessionOptions()
         so.log_severity_level = 3
         model = ort.InferenceSession(model_path, so, providers=["CUDAExecutionProvider"])
+        self.device = None
         self.input_name = model.get_inputs()[0].name
         self.label_name = model.get_outputs()[0].name
         self.model = model
@@ -241,24 +242,22 @@ class OnnxBackendExtractor(VBxExtractor):
         )[0].squeeze()
 
 
-# class TorchBackendExtractor(VBxExtractor):
-#     def __init__(self):
-#         self.device = torch.device(device='cpu')
-#         model_path = get_remote("raw_81.pth")
-#         model = ResNet101(feat_dim=FEAT_DIM, embed_dim=EMBED_DIM)
-#         model = model.to(self.device)
-#         checkpoint = torch.load(model_path, map_location=self.device)
-#         model.load_state_dict(checkpoint['state_dict'], strict=False)
-#         model.eval()
-#         self.model = model
-#
-#     def get_embedding(self, fea, device):
-#         data = torch.from_numpy(fea).to(device)
-#         data = data[None, :, :]
-#         data = torch.transpose(data, 1, 2)
-#         spk_embeds = self.model(data)
-#         return spk_embeds.data.cpu().numpy()[0]
-#
-#     def __call__(self, basename, fea, duration):
-#         with torch.no_grad():
-#             super().__call__(basename, fea, duration)
+class TorchBackendExtractor(VBxExtractor):
+    def __init__(self):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        model_path = get_remote("raw_81.pth")
+        model = ResNet101(feat_dim=FEAT_DIM, embed_dim=EMBED_DIM)
+        model = model.to(self.device)
+        checkpoint = torch.load(model_path, map_location=self.device)
+        model.load_state_dict(checkpoint['state_dict'], strict=False)
+        model.eval()
+        self.model = model
+
+    def get_embedding(self, fea):
+        with torch.no_grad():
+            data = torch.from_numpy(fea).to(self.device)
+            data = data[None, :, :]
+            data = torch.transpose(data, 1, 2)
+            spk_embeds = self.model(data)
+            return spk_embeds.data.cpu().numpy()[0]
+
