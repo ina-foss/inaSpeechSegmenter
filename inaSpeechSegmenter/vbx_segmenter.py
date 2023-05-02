@@ -230,7 +230,6 @@ class OnnxBackendExtractor(VBxExtractor):
         so = ort.SessionOptions()
         so.log_severity_level = 3
         model = ort.InferenceSession(model_path, so, providers=["CUDAExecutionProvider"])
-        self.device = None
         self.input_name = model.get_inputs()[0].name
         self.label_name = model.get_outputs()[0].name
         self.model = model
