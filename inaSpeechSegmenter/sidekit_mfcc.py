@@ -33,8 +33,8 @@ useful parameters for speaker verification.
 
 
 import numpy
-# import soundfile
-# import scipy
+#import soundfile
+#import scipy
 from scipy.fftpack.realtransforms import dct
 
 
