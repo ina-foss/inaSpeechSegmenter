@@ -148,7 +148,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         self.assertEqual(sorted(ldst), ['my_dest_1', 'my_dest_2', 'my_dest_3', 'my_dest_4', 'my_dest_5', 'my_dest_6', 'my_dest_7@@@!!'])
 
     def test_init_vfs(self):
-        +VoiceFemininityScoring()
+        VoiceFemininityScoring()
 
     def test_vf_score(self):
         media = './media/lamartine.wav'

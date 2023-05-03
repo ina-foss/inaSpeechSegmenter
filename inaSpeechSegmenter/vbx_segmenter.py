@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 from abc import ABC, abstractmethod
 import numpy as np
 import onnxruntime as ort
@@ -26,12 +25,6 @@ EMBED_DIM = 256
 SR = 16000
 
 
-def annot_to_df(annotation):
-    seg_tuples = [(s.start, s.end, label) for s, _, label in annotation.itertracks(yield_label=True)]
-    df = pd.DataFrame.from_records(seg_tuples, columns=["start", "stop", "label"])
-    return df
-
-
 def is_mid_speech(start, stop, a_vad):
     """
     Compute midpoint of segment and return True if it's a speech detected segment (from Voice activity detection)
@@ -41,45 +34,28 @@ def is_mid_speech(start, stop, a_vad):
     return np.any(is_speech)
 
 
-def get_binary_gender_label(p):
-    return "female" if (p >= 0.5) else "male"
-
-
-def add_needed_vectors(a_res, t_mid):
+def add_needed_vectors(xvectors, t_mid):
+    """
+    Keep at least 50% preds whose midpoint is in speech segment
+    """
     min_pred = round(0.5 * len(t_mid))
-    if len(a_res) < min_pred:
+    if len(xvectors) < min_pred:
         # Sort array descending
         t_mid = np.asarray(t_mid)
         t_mid = t_mid[t_mid[:, 0].argsort()][::-1]
-        diff = min_pred - len(a_res)
-        for _, s, p in t_mid[len(a_res):len(a_res) + diff]:
-            a_res[s, '_'] = get_binary_gender_label(p)
+        diff = min_pred - len(xvectors)
+        for _, k, s, x in t_mid[len(xvectors):len(xvectors) + diff]:
+            xvectors.append((k, (s.start, s.stop), x))
+    return xvectors
 
-    return a_res
 
-
-def get_femininity_score(g_pred, a_vad, overlap_tresh):
-    res = Annotation()
-    midpoint_seg = []
-
-    for start, stop, pred in g_pred:
-
-        # Keep segment label whose segment midpoint is in a speech segment
-        if is_mid_speech(start, stop, a_vad):
-            seg_total_duration = stop - start
-            seg_cropped = Timeline([Segment(start, stop)]).crop(a_vad.get_timeline())
-            # At least x % of the segment is detected as speech
-            if seg_cropped.duration() / seg_total_duration >= overlap_tresh:
-                res[Segment(start, stop), '_'] = get_binary_gender_label(pred)
-            # Save overlap ratio with vad
-            midpoint_seg.append(((seg_cropped.duration() / seg_total_duration), Segment(start, stop), pred))
-
-    # Add vectors with vad-overlap if too many preds have been removed
-    # Keep at least 50% preds whose midpoint is in speech segment
-    res = add_needed_vectors(res, midpoint_seg)
+def get_femininity_score(g_preds):
+    a_temp = Annotation()
+    for start, stop, p in g_preds:
+        a_temp[Segment(start, stop), '_'] = (p >= 0.5)
 
     # Return binary score and number of retained predictions
-    return len(res.label_timeline("female")) / len(res), len(res)
+    return len(a_temp.label_timeline(True)) / len(a_temp)
 
 
 def get_annot_VAD(vad_tuples):
@@ -145,6 +121,24 @@ class VoiceFemininityScoring:
         # Voice activity detection model
         self.vad = Segmenter(vad_engine='smn', detect_gender=False)
 
+    def apply_vad(self, xvectors, a_vad):
+        midpoint_seg = []
+        n_xvectors = []
+        for key, (start, stop), x in xvectors:
+
+            # Keep segment label whose segment midpoint is in a speech segment
+            if is_mid_speech(start, stop, a_vad):
+                seg_total_duration = stop - start
+                seg_cropped = Timeline([Segment(start, stop)]).crop(a_vad.get_timeline())
+                # At least x % of the segment is detected as speech
+                if seg_cropped.duration() / seg_total_duration >= self.vad_thresh:
+                    n_xvectors.append((key, (start, stop), x))
+                # Save overlap ratio with vad
+                midpoint_seg.append(((seg_cropped.duration() / seg_total_duration), key, Segment(start, stop), x))
+
+        # Add vectors with vad-overlap if too many predictions have been removed
+        return add_needed_vectors(n_xvectors, midpoint_seg)
+
     def __call__(self, fpath, tmpdir=None):
         """
         Return Voice Femininity Score of a given file with values before last sigmoid activation :
@@ -174,8 +168,11 @@ class VoiceFemininityScoring:
             # Get xvector embeddings
             x_vectors = self.xvector_model(basename, features, duration)
 
+            # VAD application (before gender detection)
+            x_vectors = self.apply_vad(x_vectors, annot_vad)
+
             # Applying gender detection (pretrained Multi layer perceptron)
-            x = np.asarray([x * 10 for _, _, x in x_vectors])
+            x = np.asarray([x for _, _, x in x_vectors])
             gender_pred = self.gender_detection_mlp_model.predict(x, verbose=0)
             if len(gender_pred) > 1:
                 gender_pred = np.squeeze(gender_pred)
@@ -184,7 +181,7 @@ class VoiceFemininityScoring:
             gender_pred = np.asarray(
                 [(segtup[0], segtup[1], pred) for (_, segtup, _), pred in zip(x_vectors, gender_pred)])
 
-            score, nb_vectors = get_femininity_score(gender_pred, annot_vad, overlap_tresh=self.vad_thresh)
+            score, nb_vectors = get_femininity_score(gender_pred), len(gender_pred)
 
         else:
             score, nb_vectors = None, 0
@@ -229,7 +226,9 @@ class VBxExtractor(ABC):
                 seg_start = round((start + STEP) / 100.0, 3)
                 seg_end = round(duration, 3)
                 xvectors.append((key, (seg_start, seg_end), xvector))
-        return xvectors
+
+        # Multiply all vbx vectors by 10 (output standardization to get std=1)
+        return [(key, seg, x * 10) for key, seg, x in xvectors]
 
 
 class OnnxBackendExtractor(VBxExtractor):
@@ -267,4 +266,3 @@ class TorchBackendExtractor(VBxExtractor):
             data = torch.transpose(data, 1, 2)
             spk_embeds = self.model(data)
             return spk_embeds.data.cpu().numpy()[0]
-
