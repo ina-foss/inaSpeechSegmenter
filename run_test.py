@@ -162,13 +162,13 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             err_msg='Voice Femininity Score :\nArrays are not almost equal to %d decimals' % d
         )
 
-    def test_vfs_backend_scores(self):
-        media = './media/lamartine.wav'
-        v_p = VoiceFemininityScoring(backend='pytorch')
-        pytorch_backend_score = v_p(media)[0]
-        v_o = VoiceFemininityScoring(backend='onnx')
-        onnx_backend_score = v_o(media)[0]
-        np.testing.assert_almost_equal(pytorch_backend_score, onnx_backend_score, decimal=4)
+    # def test_vfs_backend_scores(self):
+    #     media = './media/lamartine.wav'
+    #     v_p = VoiceFemininityScoring(backend='pytorch')
+    #     pytorch_backend_score = v_p(media)[0]
+    #     v_o = VoiceFemininityScoring(backend='onnx')
+    #     onnx_backend_score = v_o(media)[0]
+    #     np.testing.assert_almost_equal(pytorch_backend_score, onnx_backend_score, decimal=4)
 
 if __name__ == '__main__':
     unittest.main()

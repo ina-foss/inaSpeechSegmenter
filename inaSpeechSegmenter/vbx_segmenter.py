@@ -3,18 +3,18 @@ from abc import ABC, abstractmethod
 import numpy as np
 import onnxruntime as ort
 import logging
-import torch.backends
+#import torch.backends
 
 import keras
 from pyannote.core import Segment, Annotation, Timeline
 
-from .resnet import ResNet101
+# from .resnet import ResNet101
 from .features_vbx import povey_window, mel_fbank_mx, add_dither, fbank_htk, cmvn_floating_kaldi
 from .segmenter import Segmenter
 from .io import media2sig16kmono
 from .remote_utils import get_remote
 
-torch.backends.cudnn.enabled = True
+#torch.backends.cudnn.enabled = True
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -90,7 +90,8 @@ class VoiceFemininityScoring:
     """
     Perform VBx features extraction and give a voice femininity score.
     """
-    def __init__(self, backend='onnx', gd_model_criteria="bgc"):
+
+    def __init__(self, gd_model_criteria="bgc", backend='onnx'):
         """
         Load VBx model weights according to the chosen backend
         (See : https://github.com/BUTSpeechFIT/VBx)
@@ -99,11 +100,11 @@ class VoiceFemininityScoring:
         """
 
         # VBx Extractor
-        assert backend in ['onnx', 'pytorch'], "Backend should be 'pytorch' or 'onnx'."
+        assert backend in ['onnx'], "Backend should be 'onnx' (or 'pytorch' if uncommented)."
         if backend == "onnx":
             self.xvector_model = OnnxBackendExtractor()
-        elif backend == "pytorch":
-            self.xvector_model = TorchBackendExtractor()
+        # elif backend == "pytorch":
+        #     self.xvector_model = TorchBackendExtractor()
 
         # Gender detection model
         assert gd_model_criteria in ["bgc", "vfp"], "Gender detection model Criteria must be 'bgc' (default) or 'vfp'"
@@ -152,7 +153,7 @@ class VoiceFemininityScoring:
         basename, ext = os.path.splitext(os.path.basename(fpath))[0], os.path.splitext(os.path.basename(fpath))[1]
 
         # Read "wav" file
-        signal = media2sig16kmono(fpath, tmpdir)
+        signal = media2sig16kmono(fpath, tmpdir, dtype="float64")
         duration = len(signal) / SR
 
         # Applying voice activity detection
@@ -197,7 +198,7 @@ class VBxExtractor(ABC):
     def __init__(self):
         """
         Method to be implemented by each extractor.
-        Initialize model according to the chosen backend ('pytorch' or 'onnx').
+        Initialize model according to the chosen backend.
         """
         pass
 
@@ -236,7 +237,10 @@ class OnnxBackendExtractor(VBxExtractor):
         model_path = get_remote("final.onnx")
         so = ort.SessionOptions()
         so.log_severity_level = 3
-        model = ort.InferenceSession(model_path, so, providers=["CUDAExecutionProvider"])
+        try:
+            model = ort.InferenceSession(model_path, so, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        except:
+            model = ort.InferenceSession(model_path, so, providers=['CPUExecutionProvider'])
         self.input_name = model.get_inputs()[0].name
         self.label_name = model.get_outputs()[0].name
         self.model = model
@@ -247,22 +251,24 @@ class OnnxBackendExtractor(VBxExtractor):
             {self.input_name: fea.astype(np.float32).transpose()[np.newaxis, :, :]}
         )[0].squeeze()
 
-
-class TorchBackendExtractor(VBxExtractor):
-    def __init__(self):
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        model_path = get_remote("raw_81.pth")
-        model = ResNet101(feat_dim=FEAT_DIM, embed_dim=EMBED_DIM)
-        model = model.to(self.device)
-        checkpoint = torch.load(model_path, map_location=self.device)
-        model.load_state_dict(checkpoint['state_dict'], strict=False)
-        model.eval()
-        self.model = model
-
-    def get_embedding(self, fea):
-        with torch.no_grad():
-            data = torch.from_numpy(fea).to(self.device)
-            data = data[None, :, :]
-            data = torch.transpose(data, 1, 2)
-            spk_embeds = self.model(data)
-            return spk_embeds.data.cpu().numpy()[0]
+# # Backend implementation with torch
+# # See VBx project : https://github.com/BUTSpeechFIT/VBx/blob/master/VBx/predict.py
+#
+# class TorchBackendExtractor(VBxExtractor):
+#     def __init__(self):
+#         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+#         model_path = get_remote("raw_81.pth")
+#         model = ResNet101(feat_dim=FEAT_DIM, embed_dim=EMBED_DIM)
+#         model = model.to(self.device)
+#         checkpoint = torch.load(model_path, map_location=self.device)
+#         model.load_state_dict(checkpoint['state_dict'], strict=False)
+#         model.eval()
+#         self.model = model
+#
+#     def get_embedding(self, fea):
+#         with torch.no_grad():
+#             data = torch.from_numpy(fea).to(self.device)
+#             data = data[None, :, :]
+#             data = torch.transpose(data, 1, 2)
+#             spk_embeds = self.model(data)
+#             return spk_embeds.data.cpu().numpy()[0]
