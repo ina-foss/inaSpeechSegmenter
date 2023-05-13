@@ -10,9 +10,12 @@ Make sure you ran the unit tests before submitting an issue and tell us if and w
 - TensorFlow version:
 - Python version:
 - Running on GPU or CPU:
-- output of command nvidia-smi (if GPU is used)
-- CUDA/cuDNN version (if GPU is used):
 - Using Docker: 
+
+## System information required if using GPU acceleration
+- output of command `nvidia-smi` : 
+- output of command `python3 -c "import tensorflow as tf; print(tf.sysconfig.get_build_info()); print(tf.config.list_physical_devices('GPU'))"` :
+- CUDA/cuDNN version :
 
 ## Expected Behavior
 <!--- Tell us what should happen -->
