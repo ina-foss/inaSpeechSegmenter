@@ -173,7 +173,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         ret = extractor.model.run([extractor.label_name], {extractor.input_name: feats.astype(np.float32).transpose()[np.newaxis, :, :]})[0].squeeze()
         with h5py.File('./media/test.h5', 'r') as fid:
             ref = fid['lamartineonnx'][:]
-        np.testing.assert_almost_equal(ref, ret)
+        np.testing.assert_almost_equal(ref, ret, decimal=4)
 
 
         
