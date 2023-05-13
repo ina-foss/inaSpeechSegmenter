@@ -22,6 +22,6 @@ def get_remote(model_fname):
         return rootpath
 
     # standard keras get file
-    # check if the file is in /home/$USER/.keras/inaFaceAnalyzer/ and download it if required
+    # check if the file is in /home/$USER/.keras/inaSpeechSegmenter/ and download it if required
     url = dmodels[model_fname]
-    return get_file(model_fname, url + model_fname, cache_subdir='inaFaceSegmenter')
+    return get_file(model_fname, url + model_fname, cache_subdir='inaSpeechSegmenter')
