@@ -31,8 +31,7 @@ from inaSpeechSegmenter import Segmenter
 # from inaSpeechSegmenter.features import _wav2feats
 from inaSpeechSegmenter.segmenter import _media2feats
 
-from inaSpeechSegmenter.vbx_segmenter import VoiceFemininityScoring, OnnxBackendExtractor, get_features
-from inaSpeechSegmenter.io import media2sig16kmono
+from inaSpeechSegmenter.vbx_segmenter import VoiceFemininityScoring, OnnxBackendExtractor
 
 import filecmp
 import pandas as pd
@@ -166,13 +165,11 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         )
 
     def test_vbx_onnx(self):
-        media = './media/lamartine.wav'
-        sig = media2sig16kmono('./media/lamartine.wav', dtype='float64')
-        feats = get_features(sig)
-        extractor = OnnxBackendExtractor()
-        ret = extractor.model.run([extractor.label_name], {extractor.input_name: feats.astype(np.float32).transpose()[np.newaxis, :, :]})[0].squeeze()
         with h5py.File('./media/test.h5', 'r') as fid:
             ref = fid['lamartineonnx'][:]
+            feats = fid['lamartinemelbands'][:]
+        extractor = OnnxBackendExtractor()
+        ret = extractor.model.run([extractor.label_name], {extractor.input_name: feats.astype(np.float32).transpose()[np.newaxis, :, :]})[0].squeeze()
         np.testing.assert_almost_equal(ref, ret, decimal=4)
 
 
