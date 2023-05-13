@@ -33,7 +33,7 @@ def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmp
     """
     Convert media to temp wav 16k mono and return signal
     """
-    
+
     base, _ = os.path.splitext(os.path.basename(medianame))
 
     with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:

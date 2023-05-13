@@ -51,7 +51,6 @@ __docformat__ = 'reStructuredText'
 
 PARAM_TYPE = numpy.float32
 
-
 def hz2mel(f, htk=True):
     """Convert an array of frequency in Hz into mel.
     
