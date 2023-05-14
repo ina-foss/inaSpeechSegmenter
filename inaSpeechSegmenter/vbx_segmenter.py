@@ -29,6 +29,9 @@ def is_mid_speech(start, stop, a_vad):
     """
     Compute midpoint of segment and return True if it's a speech detected segment (from Voice activity detection)
     """
+    ## TODO : major refactor : here every X-vector requires to process all VAD
+    # IDEA : create an array corresponding to the number of xvector, set all to false
+    # iter on segments and for each segment set to true the corresponding xvector indices (much faster)
     m = (start + stop) / 2
     is_speech = [True if seg.start < m < seg.end else False for seg, _, _ in a_vad.itertracks(yield_label=True)]
     return np.any(is_speech)
@@ -107,6 +110,7 @@ class VoiceFemininityScoring:
         #     self.xvector_model = TorchBackendExtractor()
 
         # Gender detection model
+        # TODO : tell which (bad) model was provided !
         assert gd_model_criteria in ["bgc", "vfp"], "Gender detection model Criteria must be 'bgc' (default) or 'vfp'"
         gd_model = None
         if gd_model_criteria == "bgc":
@@ -167,6 +171,14 @@ class VoiceFemininityScoring:
             features = get_features(signal)
 
             # Get xvector embeddings
+            # TODO : xvectors should be computed AFTER VAD!!
+            # This is the most costly part of the code
+            # The vbx extractor code should not need basename nor duration
+            # it currently returns (key, (seg_start, seg_end), xvector
+            # it can be splitted into 3 methods :
+            # M1 : return list of (seg_start, seg_end) based on len(features)
+            # M2 : compute xvectors based on features and list of (seg_start, seg_end)
+            # M3 : between M1 & M2 : discard elements based on VAD before computing x-vectors
             x_vectors = self.xvector_model(basename, features, duration)
 
             # VAD application (before gender detection)
@@ -203,6 +215,8 @@ class VBxExtractor(ABC):
         pass
 
     def __call__(self, basename, fea, duration):
+        # SHOULD BE FACTORIZED and use feats, with list (start, end)
+        # number of lines could be divided by 2
         xvectors = []
         start = 0
         for start in range(0, len(fea) - WINLEN, STEP):
