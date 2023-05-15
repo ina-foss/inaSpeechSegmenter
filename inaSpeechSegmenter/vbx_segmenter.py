@@ -47,7 +47,7 @@ def add_needed_segs(segs, t_mid):
         t_mid = np.asarray(t_mid)
         t_mid = t_mid[t_mid[:, 0].argsort()][::-1]
         diff = min_pred - len(segs)
-        for s in t_mid[len(segs):len(segs) + diff]:
+        for _, s in t_mid[len(segs):len(segs) + diff]:
             segs.append((s.start, s.stop))
     return segs
 
