@@ -30,8 +30,7 @@ import warnings
 from inaSpeechSegmenter import Segmenter
 # from inaSpeechSegmenter.features import _wav2feats
 from inaSpeechSegmenter.segmenter import _media2feats
-
-from inaSpeechSegmenter.vbx_segmenter import VoiceFemininityScoring, OnnxBackendExtractor
+from inaSpeechSegmenter.vbx_segmenter import VoiceFemininityScoring, OnnxBackendExtractor, get_features, get_timecodes
 
 import filecmp
 import pandas as pd
@@ -40,6 +39,7 @@ import tempfile
 import h5py
 
 from scripts.ina_speech_segmenter_pyro_server import GenderJobServer
+from inaSpeechSegmenter.io import media2sig16kmono
 
 class TestInaSpeechSegmenter(unittest.TestCase):
     
@@ -172,7 +172,13 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         ret = extractor.model.run([extractor.label_name], {extractor.input_name: feats.astype(np.float32).transpose()[np.newaxis, :, :]})[0].squeeze()
         np.testing.assert_almost_equal(ref, ret, decimal=4)
 
-
+    def test_vbx_nb_features(self):
+        signal = media2sig16kmono('./media/lamartine.wav', tmpdir=None, dtype="float64")
+        features = get_features(signal)
+        segments = get_timecodes(len(features), duration=len(signal) / 16000)
+        extractor = OnnxBackendExtractor()
+        x_vectors = extractor(segments, features)
+        self.assertEqual(len(x_vectors), 56)
         
     # def test_vfs_backend_scores(self):
     #     media = './media/lamartine.wav'

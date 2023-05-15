@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import onnxruntime as ort
 import logging
-#import torch.backends
+# import torch.backends
 
 import keras
 from pyannote.core import Segment, Annotation, Timeline
@@ -14,7 +14,7 @@ from .segmenter import Segmenter
 from .io import media2sig16kmono
 from .remote_utils import get_remote
 
-#torch.backends.cudnn.enabled = True
+# torch.backends.cudnn.enabled = True
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -37,19 +37,19 @@ def is_mid_speech(start, stop, a_vad):
     return np.any(is_speech)
 
 
-def add_needed_vectors(xvectors, t_mid):
+def add_needed_segs(segs, t_mid):
     """
     Keep at least 50% preds whose midpoint is in speech segment
     """
     min_pred = round(0.5 * len(t_mid))
-    if len(xvectors) < min_pred:
+    if len(segs) < min_pred:
         # Sort array descending
         t_mid = np.asarray(t_mid)
         t_mid = t_mid[t_mid[:, 0].argsort()][::-1]
-        diff = min_pred - len(xvectors)
-        for _, k, s, x in t_mid[len(xvectors):len(xvectors) + diff]:
-            xvectors.append((k, (s.start, s.stop), x))
-    return xvectors
+        diff = min_pred - len(segs)
+        for s in t_mid[len(segs):len(segs) + diff]:
+            segs.append((s.start, s.stop))
+    return segs
 
 
 def get_femininity_score(g_preds):
@@ -89,6 +89,17 @@ def get_features(signal, LC=150, RC=149):
     return fea
 
 
+def get_timecodes(flength, duration):
+    """
+    Return list of (seg_start, seg_end) based on len(features)
+    """
+    res = [(round(i / 100.0, 3), (round((i + WINLEN) / 100.0, 3))) for i in range(0, flength - WINLEN, STEP)]
+    lstart_seg = res[-1][0]
+    if flength - lstart_seg - STEP >= 10:
+        res.append((round(lstart_seg + STEP / 100.0, 3), round(duration, 2)))
+    return res
+
+
 class VoiceFemininityScoring:
     """
     Perform VBx features extraction and give a voice femininity score.
@@ -126,10 +137,10 @@ class VoiceFemininityScoring:
         # Voice activity detection model
         self.vad = Segmenter(vad_engine='smn', detect_gender=False)
 
-    def apply_vad(self, xvectors, a_vad):
+    def apply_vad(self, segs, a_vad):
         midpoint_seg = []
-        n_xvectors = []
-        for key, (start, stop), x in xvectors:
+        n_segs = []
+        for start, stop in segs:
 
             # Keep segment label whose segment midpoint is in a speech segment
             if is_mid_speech(start, stop, a_vad):
@@ -137,12 +148,12 @@ class VoiceFemininityScoring:
                 seg_cropped = Timeline([Segment(start, stop)]).crop(a_vad.get_timeline())
                 # At least x % of the segment is detected as speech
                 if seg_cropped.duration() / seg_total_duration >= self.vad_thresh:
-                    n_xvectors.append((key, (start, stop), x))
+                    n_segs.append((start, stop))
                 # Save overlap ratio with vad
-                midpoint_seg.append(((seg_cropped.duration() / seg_total_duration), key, Segment(start, stop), x))
+                midpoint_seg.append(((seg_cropped.duration() / seg_total_duration), Segment(start, stop)))
 
-        # Add vectors with vad-overlap if too many predictions have been removed
-        return add_needed_vectors(n_xvectors, midpoint_seg)
+        # Add segments with vad-overlap if too many predictions have been removed
+        return add_needed_segs(n_segs, midpoint_seg)
 
     def __call__(self, fpath, tmpdir=None):
         """
@@ -170,29 +181,24 @@ class VoiceFemininityScoring:
             # Processing features (mel bands extraction)
             features = get_features(signal)
 
-            # Get xvector embeddings
-            # TODO : xvectors should be computed AFTER VAD!!
-            # This is the most costly part of the code
-            # The vbx extractor code should not need basename nor duration
-            # it currently returns (key, (seg_start, seg_end), xvector
-            # it can be splitted into 3 methods :
-            # M1 : return list of (seg_start, seg_end) based on len(features)
-            # M2 : compute xvectors based on features and list of (seg_start, seg_end)
-            # M3 : between M1 & M2 : discard elements based on VAD before computing x-vectors
-            x_vectors = self.xvector_model(basename, features, duration)
+            # Get xvector timecodes
+            segments = get_timecodes(len(features), duration)
 
             # VAD application (before gender detection)
-            x_vectors = self.apply_vad(x_vectors, annot_vad)
+            retained_seg = self.apply_vad(segments, annot_vad)
+
+            # Get xvector embeddings
+            x_vectors = self.xvector_model(retained_seg, features)
 
             # Applying gender detection (pretrained Multi layer perceptron)
-            x = np.asarray([x for _, _, x in x_vectors])
+            x = np.asarray([x for _, x in x_vectors])
             gender_pred = self.gender_detection_mlp_model.predict(x, verbose=0)
             if len(gender_pred) > 1:
                 gender_pred = np.squeeze(gender_pred)
 
             # Link segment start/stop from x-vectors extraction to gender predictions
             gender_pred = np.asarray(
-                [(segtup[0], segtup[1], pred) for (_, segtup, _), pred in zip(x_vectors, gender_pred)])
+                [(segtup[0], segtup[1], pred) for (segtup, _), pred in zip(x_vectors, gender_pred)])
 
             score, nb_vectors = get_femininity_score(gender_pred), len(gender_pred)
 
@@ -206,6 +212,7 @@ class VBxExtractor(ABC):
     """
     VBxExtractor is an abstract class performing xvector extraction.
     """
+
     @abstractmethod
     def __init__(self):
         """
@@ -214,36 +221,18 @@ class VBxExtractor(ABC):
         """
         pass
 
-    def __call__(self, basename, fea, duration):
-        # SHOULD BE FACTORIZED and use feats, with list (start, end)
-        # number of lines could be divided by 2
+    def __call__(self, segments, features):
         xvectors = []
-        start = 0
-        for start in range(0, len(fea) - WINLEN, STEP):
-            data = fea[start:start + WINLEN]
+        for start, stop in segments:
+            data = features[int(start * 100):int(stop * 100)]
             xvector = self.get_embedding(data)
-            key = f'{basename}_{start:08}-{(start + WINLEN):08}'
             if np.isnan(xvector).any():
-                logger.warning(f'NaN found, not processing: {key}{os.linesep}')
+                logger.warning(f'NaN found, not processing: Segment({start}:{stop}) {os.linesep}')
             else:
-                seg_start = round(start / 100.0, 3)
-                seg_end = round(start / 100.0 + WINLEN / 100.0, 3)
-                xvectors.append((key, (seg_start, seg_end), xvector))
-
-        #  Last segment
-        if len(fea) - start - STEP >= 10:
-            data = fea[start + STEP:len(fea)]
-            xvector = self.get_embedding(data)
-            key = f'{basename}_{(start + STEP):08}-{len(fea):08}'
-            if np.isnan(xvector).any():
-                logger.warning(f'NaN found, not processing: {key}{os.linesep}')
-            else:
-                seg_start = round((start + STEP) / 100.0, 3)
-                seg_end = round(duration, 3)
-                xvectors.append((key, (seg_start, seg_end), xvector))
+                xvectors.append(((start, stop), xvector))
 
         # Multiply all vbx vectors by 10 (output standardization to get std=1)
-        return [(key, seg, x * 10) for key, seg, x in xvectors]
+        return [(seg, x * 10) for seg, x in xvectors]
 
 
 class OnnxBackendExtractor(VBxExtractor):
