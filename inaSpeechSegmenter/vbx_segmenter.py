@@ -110,9 +110,9 @@ class VoiceFemininityScoring:
         #     self.xvector_model = TorchBackendExtractor()
 
         # Gender detection model
-        # TODO : tell which (bad) model was provided !
-        assert gd_model_criteria in ["bgc", "vfp"], "Gender detection model Criteria must be 'bgc' (default) or 'vfp'"
-        gd_model = None
+        assert gd_model_criteria in ["bgc", "vfp"], f"""
+        Gender detection model criteria must be 'bgc' (default) or 'vfp'. Provided criteria : {gd_model_criteria}
+        """
         if gd_model_criteria == "bgc":
             gd_model = "interspeech2023_all.hdf5"
             self.vad_thresh = 0.7
