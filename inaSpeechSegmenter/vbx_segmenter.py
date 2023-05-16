@@ -25,31 +25,27 @@ EMBED_DIM = 256
 SR = 16000
 
 
-def is_mid_speech(start, stop, a_vad):
+def is_mid_speech(segments, vad_timeline):
     """
-    Compute midpoint of segment and return True if it's a speech detected segment (from Voice activity detection)
+    Compute midpoint of segment and return speech detected segment (from Voice activity detection)
     """
-    ## TODO : major refactor : here every X-vector requires to process all VAD
-    # IDEA : create an array corresponding to the number of xvector, set all to false
-    # iter on segments and for each segment set to true the corresponding xvector indices (much faster)
-    m = (start + stop) / 2
-    is_speech = [True if seg.start < m < seg.end else False for seg, _, _ in a_vad.itertracks(yield_label=True)]
-    return np.any(is_speech)
+    m_bool = np.array([vad_timeline.overlapping((start + end) / 2) != [] for start, end in segments])
+    return np.array(segments)[m_bool.astype(bool)]
 
 
-def add_needed_segs(segs, t_mid):
+def add_needed_seg(segments, t_mid):
     """
     Keep at least 50% preds whose midpoint is in speech segment
     """
     min_pred = round(0.5 * len(t_mid))
-    if len(segs) < min_pred:
+    if len(segments) < min_pred:
         # Sort array descending
         t_mid = np.asarray(t_mid)
         t_mid = t_mid[t_mid[:, 0].argsort()][::-1]
-        diff = min_pred - len(segs)
-        for _, s in t_mid[len(segs):len(segs) + diff]:
-            segs.append((s.start, s.stop))
-    return segs
+        diff = min_pred - len(segments)
+        for _, start, stop in t_mid[len(segments):len(segments) + diff]:
+            segments.append((start, stop))
+    return segments
 
 
 def get_femininity_score(g_preds):
@@ -61,12 +57,8 @@ def get_femininity_score(g_preds):
     return len(a_temp.label_timeline(True)) / len(a_temp)
 
 
-def get_annot_VAD(vad_tuples):
-    annot_vad = Annotation()
-    for lab, start, end in vad_tuples:
-        if lab == "speech":
-            annot_vad[Segment(start, end), '_'] = lab
-    return annot_vad
+def get_timeline(vad_tuples):
+    return Timeline(segments=[Segment(start, end) for lab, start, end in vad_tuples if lab == "speech"])
 
 
 def get_features(signal, LC=150, RC=149):
@@ -137,23 +129,23 @@ class VoiceFemininityScoring:
         # Voice activity detection model
         self.vad = Segmenter(vad_engine='smn', detect_gender=False)
 
-    def apply_vad(self, segs, a_vad):
-        midpoint_seg = []
-        n_segs = []
-        for start, stop in segs:
+    def apply_vad(self, segments, timeline):
+        res, midpoint_seg = [], []
 
-            # Keep segment label whose segment midpoint is in a speech segment
-            if is_mid_speech(start, stop, a_vad):
-                seg_total_duration = stop - start
-                seg_cropped = Timeline([Segment(start, stop)]).crop(a_vad.get_timeline())
-                # At least x % of the segment is detected as speech
-                if seg_cropped.duration() / seg_total_duration >= self.vad_thresh:
-                    n_segs.append((start, stop))
-                # Save overlap ratio with vad
-                midpoint_seg.append(((seg_cropped.duration() / seg_total_duration), Segment(start, stop)))
+        # Keep segment label whose segment midpoint is in a speech segment
+        retained_seg = is_mid_speech(segments, timeline)
+
+        for start, stop in retained_seg:
+            sdur = stop - start
+            seg_cropped = Timeline([Segment(start, stop)]).crop(timeline)
+            # At least x % of the segment is detected as speech
+            if seg_cropped.duration() / sdur >= self.vad_thresh:
+                res.append((start, stop))
+            # Save overlap ratio with vad
+            midpoint_seg.append((seg_cropped.duration() / sdur, start, stop))
 
         # Add segments with vad-overlap if too many predictions have been removed
-        return add_needed_segs(n_segs, midpoint_seg)
+        return add_needed_seg(res, midpoint_seg)
 
     def __call__(self, fpath, tmpdir=None):
         """
@@ -161,31 +153,26 @@ class VoiceFemininityScoring:
                 * convert file to wav 16k mono with ffmpeg
                 * operate Mel bands extraction
                 * operate voice activity detection using ISS VAD ('smn')
-                * get VBx features
+                * get VBx features on detected speech segments
                 * apply gender detection model and compute femininity score
                 * return score, duration of detected speech and number of retained x-vectors
         """
-        basename, ext = os.path.splitext(os.path.basename(fpath))[0], os.path.splitext(os.path.basename(fpath))[1]
-
         # Read "wav" file
         signal = media2sig16kmono(fpath, tmpdir, dtype="float64")
         duration = len(signal) / SR
 
         # Applying voice activity detection
         vad_seg = self.vad(fpath)
-        annot_vad = get_annot_VAD(vad_seg)
-        speech_duration = annot_vad.label_duration("speech")
+        speech_timeline = get_timeline(vad_seg)
 
-        if speech_duration:
+        if speech_timeline.duration():
 
             # Processing features (mel bands extraction)
             features = get_features(signal)
 
-            # Get xvector timecodes
+            # VAD application
             segments = get_timecodes(len(features), duration)
-
-            # VAD application (before gender detection)
-            retained_seg = self.apply_vad(segments, annot_vad)
+            retained_seg = self.apply_vad(segments, speech_timeline)
 
             # Get xvector embeddings
             x_vectors = self.xvector_model(retained_seg, features)
@@ -205,7 +192,7 @@ class VoiceFemininityScoring:
         else:
             score, nb_vectors = None, 0
 
-        return score, speech_duration, nb_vectors
+        return score, speech_timeline.duration(), nb_vectors
 
 
 class VBxExtractor(ABC):
