@@ -28,7 +28,6 @@ import os
 import sys
 
 import numpy as np
-import pandas as pd
 from tensorflow import keras
 from tensorflow.keras.utils import get_file
 from .thread_returning import ThreadReturning

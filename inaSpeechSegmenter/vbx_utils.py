@@ -5,7 +5,6 @@ import logging
 import numpy as np
 import onnxruntime as ort
 from pyannote.core import Segment, Annotation, Timeline
-import keras
 
 from .remote_utils import get_remote
 from .features_vbx import povey_window, mel_fbank_mx, add_dither, fbank_htk, cmvn_floating_kaldi
