@@ -187,7 +187,7 @@ Warning : 'detect_gender' argument must be set to True.
     <td>97,74</td>
     <td><b>98,87</b></td>
     <td>95,82</td>
-    <td><b>98,87</b></td>
+    <td><b>97,29</b></td>
     <td><b>96,55</b></td>
     <td>96,16</td>
   </tr>
