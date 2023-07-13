@@ -108,7 +108,7 @@ Class constructor accept 3 optional arguments:
 #### _VBx-based_ models
 
 Another gender segmentation system, which utilizes **x-vectors** (https://github.com/BUTSpeechFIT/VBx), is also available and can be specified in the class constructor for usage:
-* vbx_based (default:False): if set to True, performs gender segmentation using _vbx-based_ system on speech segment. Computation time is longer but gender detection can be better depending on your use (see scoring tables).  
+* vbx_based (default: False): if set to True, performs gender segmentation using _vbx-based_ system on speech segment. Computation time is longer but gender detection can be better depending on your use (see scoring tables).  
 
 Warning : 'detect_gender' argument must be set to True.
 
@@ -116,7 +116,17 @@ Warning : 'detect_gender' argument must be set to True.
 
 **Frame-level evaluation** (collar = 500ms)
 
-<table>
+<table style="undefined;table-layout: fixed; width: 552px">
+<colgroup>
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+</colgroup>
 <thead>
   <tr>
     <th colspan="2" rowspan="2"></th>
@@ -138,53 +148,53 @@ Warning : 'detect_gender' argument must be set to True.
     <td rowspan="2">Recall</td>
     <td>Female</td>
     <td>96,88</td>
-    <td>98,97</td>
+    <td><b>98,97</b></td>
     <td>95,86</td>
-    <td>97,00</td>
+    <td><b>97,00</b></td>
     <td>96,15</td>
-    <td>97,82</td>
+    <td><b>97,82</b></td>
   </tr>
   <tr>
     <td>Male</td>
     <td>99,26</td>
-    <td>99,38</td>
-    <td>98,57</td>
+    <td><b>99,38</b></td>
+    <td><b>98,57</b></td>
     <td>97,90</td>
-    <td>98,55</td>
+    <td><b>98,55</b></td>
     <td>95,60</td>
   </tr>
   <tr>
     <td rowspan="2">Precision</td>
     <td>Female</td>
     <td>97,53</td>
-    <td>97,54</td>
+    <td><b>97,54</b></td>
     <td>90,05</td>
-    <td>94,95</td>
-    <td>95,07</td>
+    <td><b>94,95</b></td>
+    <td><b>95,07</b></td>
     <td>94,47</td>
   </tr>
   <tr>
     <td>Male</td>
     <td>97,30</td>
-    <td>99,61</td>
+    <td><b>99,61</b></td>
     <td>98,97</td>
-    <td>99,35</td>
+    <td><b>99,35</b></td>
     <td>96,47</td>
-    <td>96,85</td>
+    <td><b>96,85</b></td>
   </tr>
   <tr>
     <td colspan="2">F1-score</td>
     <td>97,74</td>
-    <td>98,87</td>
+    <td><b>98,87</b></td>
     <td>95,82</td>
-    <td>98,87</td>
-    <td>96,55</td>
+    <td><b>98,87</b></td>
+    <td><b>96,55</b></td>
     <td>96,16</td>
   </tr>
 </tbody>
 </table>
 
-\* **DATA-INA-FR** : a new annotated corpus of French audiovisual archives has been annotated. 
+\* **DATA-INA-FR** : a new corpus of French audiovisual archives has been annotated. 
 It represents 285 minutes of content from French television and radio channels. 
 This corpus is much noisier, but more representative of the reality of an audiovisual stream. 
 We recommend setting vbx_based to False if you are processing such data.
@@ -228,7 +238,7 @@ Details on the speech detection submodule can be found bellow:
 }
 ```
 
-If you use the VBx-Based Voice Femininity Scoring, you can cite its publication accepted in the 24th INTERSPEECH Conference (2023) in Dublin, Ireland: 
+If you use the Voice Femininity Scoring, you can cite its publication accepted in the 24th INTERSPEECH Conference (2023) in Dublin, Ireland: 
 ```bibtex
 @inproceedings{ddoukhaninterspeech2023,
   author = {Doukhan, David and Devauchelle, Simon and Girard-Monneron Lucile and Wagner, Isabelle and Rilliard Albert.},
