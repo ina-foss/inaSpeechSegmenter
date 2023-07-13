@@ -108,45 +108,86 @@ Class constructor accept 3 optional arguments:
 #### _VBx-based_ models
 
 Another gender segmentation system, which utilizes **x-vectors** (https://github.com/BUTSpeechFIT/VBx), is also available and can be specified in the class constructor for usage:
-* vbx_based : (default:False): if set to True, performs gender segmentation using _vbx-based_ system on speech segment. Computation time is longer but gender detection can be better depending on your use (see scoring tables).  
+* vbx_based (default:False): if set to True, performs gender segmentation using _vbx-based_ system on speech segment. Computation time is longer but gender detection can be better depending on your use (see scoring tables).  
 
 Warning : 'detect_gender' argument must be set to True.
 
 ### Gender detection scores
 
 **Frame-level evaluation** (collar = 500ms)
-* on **ESTER** corpus
 
-| vbx_based            |  False   |     True     |
-|----------------------|:--------:|:------------:|
-| **Female** recall    |  96,88   |  **98,97**   |
-| **Male** recall      |  99,26   |  **99,38**   |
-| **Female** precision |  97,53   |  **97,54**   |
-| **Male** precision   |  97,30   |  **99,61**   |
-| F1 score             |  97,74   |  **98,87**   |
+<table>
+<thead>
+  <tr>
+    <th colspan="2" rowspan="2"></th>
+    <th colspan="2">ESTER</th>
+    <th colspan="2">REPERE</th>
+    <th colspan="2">DATA--INA-FR*</th>
+  </tr>
+  <tr>
+    <th>ISS</th>
+    <th>VBx-based</th>
+    <th>ISS</th>
+    <th>VBx-based</th>
+    <th>ISS</th>
+    <th>VBx-based</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td rowspan="2">Recall</td>
+    <td>Female</td>
+    <td>96,88</td>
+    <td>98,97</td>
+    <td>95,86</td>
+    <td>97,00</td>
+    <td>96,15</td>
+    <td>97,82</td>
+  </tr>
+  <tr>
+    <td>Male</td>
+    <td>99,26</td>
+    <td>99,38</td>
+    <td>98,57</td>
+    <td>97,90</td>
+    <td>98,55</td>
+    <td>95,60</td>
+  </tr>
+  <tr>
+    <td rowspan="2">Precision</td>
+    <td>Female</td>
+    <td>97,53</td>
+    <td>97,54</td>
+    <td>90,05</td>
+    <td>94,95</td>
+    <td>95,07</td>
+    <td>94,47</td>
+  </tr>
+  <tr>
+    <td>Male</td>
+    <td>97,30</td>
+    <td>99,61</td>
+    <td>98,97</td>
+    <td>99,35</td>
+    <td>96,47</td>
+    <td>96,85</td>
+  </tr>
+  <tr>
+    <td colspan="2">F1-score</td>
+    <td>97,74</td>
+    <td>98,87</td>
+    <td>95,82</td>
+    <td>98,87</td>
+    <td>96,55</td>
+    <td>96,16</td>
+  </tr>
+</tbody>
+</table>
 
-* on **REPERE** corpus
-
-| vbx_based            |   False   |   True    |
-|----------------------|:---------:|:---------:|
-| **Female** recall    |   95,86   | **97,00** |
-| **Male** recall      | **98,57** |   97,90   |
-| **Female** precision |   90,05   | **94,95** |
-| **Male** precision   |   98,97   | **99,35** |
-| F1 score             |   95,82   | **98,87** |
-
-* **DATA-INA-FR** : a new annotated corpus of French audiovisual archives has been annotated. 
+\* **DATA-INA-FR** : a new annotated corpus of French audiovisual archives has been annotated. 
 It represents 285 minutes of content from French television and radio channels. 
 This corpus is much noisier, but more representative of the reality of an audiovisual stream. 
-We recommend setting vbx_based to False if you are processing such data.  
-
-| vbx_based            |   False   |   True    |
-|----------------------|:---------:|:---------:|
-| **Female** recall    |   96,24   | **97,84** |
-| **Male** recall      | **97,66** |   94,66   |
-| **Female** precision | **93,26** |   93,10   |
-| **Male** precision   |   96,38   | **97,01** |
-| F1 score             | **95,87** |   95,61   |
+We recommend setting vbx_based to False if you are processing such data.
 
 
 ## Using _VBx-Based_ Voice Femininity Scoring
