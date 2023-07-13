@@ -30,7 +30,7 @@ import warnings
 from inaSpeechSegmenter import Segmenter
 # from inaSpeechSegmenter.features import _wav2feats
 from inaSpeechSegmenter.segmenter import _media2feats
-from inaSpeechSegmenter.vbx_segmenter import VoiceFemininityScoring
+from inaSpeechSegmenter.voice_femininity_scoring import VoiceFemininityScoring
 from inaSpeechSegmenter.utils import get_features, get_timecodes, OnnxBackendExtractor
 
 import filecmp

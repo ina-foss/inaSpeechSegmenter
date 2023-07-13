@@ -44,7 +44,7 @@ from pyannote.algorithms.utils.viterbi import viterbi_decoding
 from .viterbi_utils import pred2logemission, diag_trans_exp, log_trans_exp
 from .remote_utils import get_remote
 
-from .new_segmenter import VBxSegmenter
+from .vbxsegmenter import VBxSegmenter
 from .utils import get_features, binidx2seglist
 
 from .io import media2sig16kmono
