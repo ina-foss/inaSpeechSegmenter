@@ -263,3 +263,4 @@ https://git-lium.univ-lemans.fr/Larcher/sidekit
 Relevant contributions to the project were done by:
 * Eliott Lechapt : https://github.com/elechapt
 * Rémi Uro : https://github.com/r-uro
+* Simon Devauchelle : https://github.com/simonD3V
