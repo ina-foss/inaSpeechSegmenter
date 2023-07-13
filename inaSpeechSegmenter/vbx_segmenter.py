@@ -9,7 +9,7 @@ from pyannote.core import Segment, Timeline
 from .segmenter import Segmenter
 from .io import media2sig16kmono
 from .remote_utils import get_remote
-from .vbx_utils import OnnxBackendExtractor, is_mid_speech, add_needed_seg, get_timecodes, get_features, get_timeline, get_femininity_score
+from .utils import OnnxBackendExtractor, is_mid_speech, add_needed_seg, get_timecodes, get_features, get_timeline, get_femininity_score
 
 # torch.backends.cudnn.enabled = True
 

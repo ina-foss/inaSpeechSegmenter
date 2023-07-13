@@ -45,7 +45,7 @@ from .viterbi_utils import pred2logemission, diag_trans_exp, log_trans_exp
 from .remote_utils import get_remote
 
 from .new_segmenter import VBxSegmenter
-from .vbx_utils import get_features
+from .utils import get_features, binidx2seglist
 
 from .io import media2sig16kmono
 from .sidekit_mfcc import mfcc
@@ -88,26 +88,6 @@ def _get_patches(mspec, w, step):
     finite = np.all(np.isfinite(data), axis=1)
     data.shape = (len(data), w, h)
     return data, finite
-
-
-def _binidx2seglist(binidx):
-    """
-    ss._binidx2seglist((['f'] * 5) + (['bbb'] * 10) + ['v'] * 5)
-    Out: [('f', 0, 5), ('bbb', 5, 15), ('v', 15, 20)]
-    
-    #TODO: is there a pandas alternative??
-    """
-    curlabel = None
-    bseg = -1
-    ret = []
-    for i, e in enumerate(binidx):
-        if e != curlabel:
-            if curlabel is not None:
-                ret.append((curlabel, bseg, i))
-            curlabel = e
-            bseg = i
-    ret.append((curlabel, bseg, i + 1))
-    return ret
 
 
 class DnnSegmenter:
@@ -176,7 +156,7 @@ class DnnSegmenter:
             rawpred = rawpred[l:]
             r[finite[start:stop] == False, :] = 0.5
             pred = viterbi_decoding(np.log(r), diag_trans_exp(self.viterbi_arg, len(self.outlabels)))
-            for lab2, start2, stop2 in _binidx2seglist(pred):
+            for lab2, start2, stop2 in binidx2seglist(pred):
                 ret.append((self.outlabels[int(lab2)], start2 + start, stop2 + start))
         return ret
 
@@ -261,7 +241,7 @@ class Segmenter:
         """
         # perform energy-based activity detection
         lseg = []
-        for lab, start, stop in _binidx2seglist(_energy_activity(loge, self.energy_ratio)[::2]):
+        for lab, start, stop in binidx2seglist(_energy_activity(loge, self.energy_ratio)[::2]):
             if lab == 0:
                 lab = 'noEnergy'
             else:

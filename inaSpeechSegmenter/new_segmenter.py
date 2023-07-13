@@ -4,31 +4,12 @@ import numpy as np
 import keras
 from librosa.sequence import transition_loop, viterbi
 
-from .vbx_utils import OnnxBackendExtractor, get_timeline
+from .utils import OnnxBackendExtractor, get_timeline, binidx2seglist
 from .remote_utils import get_remote
 
 WINLEN = 144
 STEP = 24
-
-
-def _binidx2seglist(binidx):
-    """
-    ss._binidx2seglist((['f'] * 5) + (['bbb'] * 10) + ['v'] * 5)
-    Out: [('f', 0, 5), ('bbb', 5, 15), ('v', 15, 20)]
-
-    #TODO: is there a pandas alternative??
-    """
-    curlabel = None
-    bseg = -1
-    ret = []
-    for i, e in enumerate(binidx):
-        if e != curlabel:
-            if curlabel is not None:
-                ret.append((curlabel, bseg, i))
-            curlabel = e
-            bseg = i
-    ret.append((curlabel, bseg, i + 1))
-    return ret
+VITERBI_PR = 0.99999994
 
 
 def get_indices(segments, vad_timeline):
@@ -108,10 +89,10 @@ class VBxSegmenter:
 
             # Viterbi (librosa)
             r = np.vstack([1 - gender_pred, gender_pred])
-            pred = viterbi(r, transition_loop(2, prob=0.9999999))
+            pred = viterbi(r, transition_loop(2, prob=VITERBI_PR))
 
-            for lab2, start2, stop2 in _binidx2seglist(pred):
-                start2, stop2 = round(0.24 * start2, 2), round(0.24 * stop2, 2)
+            for lab2, start2, stop2 in binidx2seglist(pred):
+                start2, stop2 = round((STEP*0.01) * start2, 2), round((STEP*0.01) * stop2, 2)
                 ret.append((self.outlabels[int(lab2)], start + start2, start + stop2))
 
             # The stop of last gender segment is replaced by the stop of the speech segment

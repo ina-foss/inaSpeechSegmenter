@@ -31,7 +31,7 @@ from inaSpeechSegmenter import Segmenter
 # from inaSpeechSegmenter.features import _wav2feats
 from inaSpeechSegmenter.segmenter import _media2feats
 from inaSpeechSegmenter.vbx_segmenter import VoiceFemininityScoring
-from inaSpeechSegmenter.vbx_utils import get_features, get_timecodes, OnnxBackendExtractor
+from inaSpeechSegmenter.utils import get_features, get_timecodes, OnnxBackendExtractor
 
 import filecmp
 import pandas as pd
