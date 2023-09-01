@@ -193,6 +193,7 @@ class SpeechMusicNoise(DnnSegmenter):
     inlabel = 'energy'
     nmel = 21
     viterbi_arg = 80
+
     
 class Gender(DnnSegmenter):
     # Gender Segmentation, requires voice activity detection
@@ -201,6 +202,70 @@ class Gender(DnnSegmenter):
     inlabel = 'speech'
     nmel = 24
     viterbi_arg = 80
+
+
+class SmnVad(SpeechMusicNoise):
+    # Use a speech, music & noise classification modules
+    # does not distinguish noise from music in order to be more robust
+    # for the task of speech detection
+    outlabels = ('speech', 'nonspeech')
+    viterbi_arg = 20
+
+
+    def __call__(self, mspec, lseg, difflen = 0):
+        """
+        *** input
+        * mspec: mel spectrogram
+        * lseg: list of tuples (label, start, stop) corresponding to previous segmentations
+        * difflen: 0 if the original length of the mel spectrogram is >= 68
+                otherwise it is set to 68 - length(mspec)
+        *** output
+        a list of adjacent tuples (label, start, stop)
+        """
+
+        if self.nmel < 24:
+            mspec = mspec[:, :self.nmel].copy()
+        
+        patches, finite = _get_patches(mspec, 68, 2)
+        if difflen > 0:
+            patches = patches[:-int(difflen / 2), :, :]
+            finite = finite[:-int(difflen / 2)]
+            
+        assert len(finite) == len(patches), (len(patches), len(finite))
+            
+        batch = []
+        for lab, start, stop in lseg:
+            if lab == self.inlabel:
+                batch.append(patches[start:stop, :])
+
+        if len(batch) > 0:
+            batch = np.concatenate(batch)
+            rawpred = self.nn.predict(batch, batch_size=self.batch_size, verbose=2)
+            
+            # dirty hack to keep maximal response between music or noise
+            #print(rawpred.shape, rawpred.dtype)
+            tmp = np.empty((len(rawpred), 2), dtype=rawpred.dtype)
+            tmp[:,0] = rawpred[:, 0]
+            tmp[:, 1] = np.max(rawpred[:, 1:], axis=1)
+            rawpred = tmp
+            #print(rawpred.shape)
+            #print(rawpred[:, 0] - rawpred[:, 1])
+        gc.collect()
+            
+        ret = []
+        for lab, start, stop in lseg:
+            if lab != self.inlabel:
+                ret.append((lab, start, stop))
+                continue
+
+            l = stop - start
+            r = rawpred[:l] 
+            rawpred = rawpred[l:]
+            r[finite[start:stop] == False, :] = 0.5
+            pred = viterbi_decoding(np.log(r), diag_trans_exp(self.viterbi_arg, len(self.outlabels)))
+            for lab2, start2, stop2 in _binidx2seglist(pred):
+                ret.append((self.outlabels[int(lab2)], start2+start, stop2+start))            
+        return ret
 
 
 class Segmenter:
@@ -214,6 +279,7 @@ class Segmenter:
                 'sm' was used in the results presented in ICASSP 2017 paper
                         and in MIREX 2018 challenge submission
                 'smn' has been implemented more recently and has not been evaluated in papers
+                'vad' lastest model
         
         'detect_gender': if False, speech excerpts are return labelled as 'speech'
                 if True, speech excerpts are splitted into 'male' and 'female' segments
@@ -232,11 +298,13 @@ class Segmenter:
         self.energy_ratio = energy_ratio
 
         # select speech/music or speech/music/noise voice activity detection engine
-        assert vad_engine in ['sm', 'smn']
+        assert vad_engine in ['sm', 'smn', 'vad']
         if vad_engine == 'sm':
             self.vad = SpeechMusic(batch_size)
         elif vad_engine == 'smn':
             self.vad = SpeechMusicNoise(batch_size)
+        elif vad_engine == 'vad':
+            self.vad = SmnVad(batch_size)
 
         # load gender detection NN if required
         assert detect_gender in [True, False]
