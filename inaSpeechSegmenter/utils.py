@@ -7,21 +7,20 @@ import onnxruntime as ort
 from pyannote.core import Segment, Annotation, Timeline
 
 from .remote_utils import get_remote
-from .features_vbx import povey_window, mel_fbank_mx, add_dither, fbank_htk, cmvn_floating_kaldi
+#from .features_vbx import povey_window, mel_fbank_mx, add_dither, fbank_htk, cmvn_floating_kaldi
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 STEP = 24
 WINLEN = 144
-FEAT_DIM = 64
 EMBED_DIM = 256
-SR = 16000
 
 
 def binidx2seglist(binidx):
     """
-    ss._binidx2seglist((['f'] * 5) + (['bbb'] * 10) + ['v'] * 5)
+    binidx2seglist((['f'] * 5) + (['bbb'] * 10) + ['v'] * 5)
     Out: [('f', 0, 5), ('bbb', 5, 15), ('v', 15, 20)]
 
     #TODO: is there a pandas alternative??
@@ -86,24 +85,7 @@ def get_timecodes(flength, duration):
     return res
 
 
-def get_features(signal, LC=150, RC=149):
-    """
-    This code function is entirely copied from the VBx script 'predict.py'
-    https://github.com/BUTSpeechFIT/VBx/blob/master/VBx/predict.py
-    """
 
-    noverlap = 240
-    winlen = 400
-    window = povey_window(winlen)
-    fbank_mx = mel_fbank_mx(
-        winlen, SR, NUMCHANS=FEAT_DIM, LOFREQ=20.0, HIFREQ=7600, htk_bug=False)
-
-    np.random.seed(3)  # for reproducibility
-    signal = add_dither((signal * 2 ** 15).astype(int))
-    seg = np.r_[signal[noverlap // 2 - 1::-1], signal, signal[-1:-winlen // 2 - 1:-1]]
-    fea = fbank_htk(seg, window, noverlap, fbank_mx, USEPOWER=True, ZMEANSOURCE=True)
-    fea = cmvn_floating_kaldi(fea, LC, RC, norm_vars=False).astype(np.float32)
-    return fea
 
 
 class VBxExtractor(ABC):

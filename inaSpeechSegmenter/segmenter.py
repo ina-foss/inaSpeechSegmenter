@@ -43,10 +43,14 @@ from .viterbi_utils import pred2logemission, diag_trans_exp, log_trans_exp
 from .remote_utils import get_remote
 
 from .vbxsegmenter import VBxSegmenter
-from .utils import get_features, binidx2seglist
+from .utils import binidx2seglist
+
 
 from .io import media2sig16kmono
+
 from .sidekit_mfcc import mfcc
+from .features_vbx import vbx_mel_bands
+
 import warnings
 
 from .export_funcs import seg2csv, seg2textgrid
@@ -278,7 +282,7 @@ class Segmenter:
         mspec_vbx = None
         if self.vbx_based:
             signal = media2sig16kmono(medianame, tmpdir, dtype="float64")
-            mspec_vbx = get_features(signal)
+            mspec_vbx = vbx_mel_bands(signal)
 
         if start_sec is None:
             start_sec = 0

@@ -8,6 +8,10 @@
 
 import numpy as np
 
+FEAT_DIM = 64
+SR = 16000
+
+
 
 def framing(a, window, shift=1):
     shape = ((a.shape[0] - window) // shift + 1, window) + a.shape[1:]
@@ -147,3 +151,24 @@ def cmvn_floating_kaldi(x, LC, RC, norm_vars=True):
         f = np.r_[np.zeros((1, dim)), np.cumsum(x**2, 0)]
         x /= np.sqrt((f[win_start+win_len] - f[win_start]) / win_len)
     return x
+
+def vbx_mel_bands(signal, LC=150, RC=149):
+    """
+    This code function is entirely copied from the VBx script 'predict.py'
+    https://github.com/BUTSpeechFIT/VBx/blob/master/VBx/predict.py
+    """
+
+    assert signal.dtype == 'float64'
+
+    noverlap = 240
+    winlen = 400
+    window = povey_window(winlen)
+    fbank_mx = mel_fbank_mx(
+        winlen, SR, NUMCHANS=FEAT_DIM, LOFREQ=20.0, HIFREQ=7600, htk_bug=False)
+
+    np.random.seed(3)  # for reproducibility
+    signal = add_dither((signal * 2 ** 15).astype(int))
+    seg = np.r_[signal[noverlap // 2 - 1::-1], signal, signal[-1:-winlen // 2 - 1:-1]]
+    fea = fbank_htk(seg, window, noverlap, fbank_mx, USEPOWER=True, ZMEANSOURCE=True)
+    fea = cmvn_floating_kaldi(fea, LC, RC, norm_vars=False).astype(np.float32)
+    return fea

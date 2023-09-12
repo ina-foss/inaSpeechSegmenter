@@ -31,7 +31,8 @@ from inaSpeechSegmenter import Segmenter
 # from inaSpeechSegmenter.features import _wav2feats
 from inaSpeechSegmenter.segmenter import _media2feats
 from inaSpeechSegmenter.voice_femininity_scoring import VoiceFemininityScoring
-from inaSpeechSegmenter.utils import get_features, get_timecodes, OnnxBackendExtractor
+from inaSpeechSegmenter.utils import get_timecodes, OnnxBackendExtractor
+from inaSpeechSegmenter.features_vbx import vbx_mel_bands
 
 import filecmp
 import pandas as pd
@@ -182,7 +183,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
 
     def test_vbx_nb_features(self):
         signal = media2sig16kmono('./media/lamartine.wav', tmpdir=None, dtype="float64")
-        features = get_features(signal)
+        features = vbx_mel_bands(signal)
         segments = get_timecodes(len(features), duration=len(signal) / 16000)
         extractor = OnnxBackendExtractor()
         x_vectors = extractor(segments, features)
