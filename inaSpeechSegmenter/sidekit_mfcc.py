@@ -321,6 +321,9 @@ def mfcc(input_sig,
     
     For more details, refer to [Davis80]_.
     """
+    # minor modification
+    assert input_sig.dtype == 'float32'
+
     # Compute power spectrum
     spec, log_energy = power_spectrum(input_sig,
                                       fs,
