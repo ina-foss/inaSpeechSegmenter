@@ -1,0 +1,9 @@
+labels	start	stop
+noEnergy	0.0	1.02
+female	1.02	3.88
+noEnergy	3.88	4.34
+female	4.34	4.94
+noEnergy	4.94	5.4
+female	5.4	8.28
+noEnergy	8.28	9.02
+male	9.02	14.620000000000001

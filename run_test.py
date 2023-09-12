@@ -30,8 +30,8 @@ import warnings
 from inaSpeechSegmenter import Segmenter
 # from inaSpeechSegmenter.features import _wav2feats
 from inaSpeechSegmenter.segmenter import _media2feats
-
-from inaSpeechSegmenter.vbx_segmenter import VoiceFemininityScoring, OnnxBackendExtractor
+from inaSpeechSegmenter.voice_femininity_scoring import VoiceFemininityScoring
+from inaSpeechSegmenter.utils import get_features, get_timecodes, OnnxBackendExtractor
 
 import filecmp
 import pandas as pd
@@ -40,9 +40,10 @@ import tempfile
 import h5py
 
 from scripts.ina_speech_segmenter_pyro_server import GenderJobServer
+from inaSpeechSegmenter.io import media2sig16kmono
 
 class TestInaSpeechSegmenter(unittest.TestCase):
-    
+
     def test_init(self):
         Segmenter()
 
@@ -58,7 +59,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             _media2feats('./media/silence2sec.wav', None, None, None, 'ffmpeg')
             assert len(w) == 0, [str(e) for e in w]
 
-        
+
     def test_short(self):
         seg = Segmenter(vad_engine='sm')
         ret = seg('./media/0021.mp3')
@@ -70,7 +71,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         def seg2str(iseg, tseg):
             label, start, stop  = tseg
             return 'seg %d <%s, %f, %f>' % (iseg, label, start, stop)
-        
+
         seg = Segmenter()
         ret = seg('./media/musanmix.mp3')
         for i in range(len(ret) -1):
@@ -87,7 +88,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         self.assertEqual([e[0] for e in ref], [e[0] for e in ret])
         np.testing.assert_almost_equal([e[1] for e in ref], [e[1] for e in ret])
         np.testing.assert_almost_equal([e[2] for e in ref], [e[2] for e in ret])
-        
+
     def test_batch(self):
         seg = Segmenter(vad_engine='sm')
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -96,13 +97,13 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             self.assertTrue(filecmp.cmp(lout[0], lout[1]))
             self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-sm-gender.csv'))
 
-  
+
     def test_praat_export(self):
         seg = Segmenter()
         with tempfile.TemporaryDirectory() as tmpdirname:
             lout = [os.path.join(tmpdirname, '1.TextGrid')]
             ret = seg.batch_process(['./media/musanmix.mp3'], lout, output_format='textgrid')
-            self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-smn-gender.TextGrid'))       
+            self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-smn-gender.TextGrid'))
 
     def test_batch_not_exists(self):
         seg = Segmenter(vad_engine='sm')
@@ -110,7 +111,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             lout = [os.path.join(tmpdirname, '1.csv'), os.path.join(tmpdirname, '2.csv'), os.path.join(tmpdirname, '3.csv')]
             ret = seg.batch_process(['./media/musanmix.mp3', './media/doesnotexists.mp3', '/sdfdsF/zefzef/sdf.pp'], lout)
             self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-sm-gender.csv'))
-            
+
     def test_program(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
             ret = os.system('CUDA_VISIBLE_DEVICES="" ./scripts/ina_speech_segmenter.py -i ./media/0021.mp3 -o %s' % tmpdirname)
@@ -124,7 +125,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             self.assertTrue(filecmp.cmp(os.path.join(tmpdirname, '0021.csv'), './media/0021-smn-gender.csv'))
             self.assertTrue(filecmp.cmp(os.path.join(tmpdirname, 'musanmix.csv'), './media/musanmix-smn-gender.csv'))
             self.assertTrue(filecmp.cmp(os.path.join(tmpdirname, 'silence2sec.csv'), './media/silence2sec-smn-gender.csv'))
-            
+
     def test_startsec(self):
         # test start_sec argument
         seg = Segmenter()
@@ -172,8 +173,24 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         ret = extractor.model.run([extractor.label_name], {extractor.input_name: feats.astype(np.float32).transpose()[np.newaxis, :, :]})[0].squeeze()
         np.testing.assert_almost_equal(ref, ret, decimal=4)
 
+    def test_vbx_nb_features(self):
+        signal = media2sig16kmono('./media/lamartine.wav', tmpdir=None, dtype="float64")
+        features = get_features(signal)
+        segments = get_timecodes(len(features), duration=len(signal) / 16000)
+        extractor = OnnxBackendExtractor()
+        x_vectors = extractor(segments, features)
+        self.assertEqual(len(x_vectors), 56)
 
-        
+    def test_vbx_segmenter(self):
+        v = Segmenter(vad_engine="smn", detect_gender=True, vbx_based=True)
+        seg_pred = v('./media/lamartine.wav')
+        df_test = pd.read_csv('./media/vbx_seg.csv', sep='\t')
+        seg_test = [(row["labels"], row["start"], row["stop"]) for _, row in df_test.iterrows()]
+        for (l1, start1, stop1), (l2, start2, stop2) in zip(seg_pred, seg_test):
+            self.assertEqual(l1, l2)
+            np.testing.assert_almost_equal(start1, start2, decimal=2)
+            np.testing.assert_almost_equal(stop1, stop2, decimal=2)
+
     # def test_vfs_backend_scores(self):
     #     media = './media/lamartine.wav'
     #     v_p = VoiceFemininityScoring(backend='pytorch')

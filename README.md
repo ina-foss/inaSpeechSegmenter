@@ -105,12 +105,115 @@ Class constructor accept 3 optional arguments:
 * detect_gender (default: True): if set to True, performs gender segmentation on speech segment and outputs labels 'female' or 'male'. Otherwise, outputs labels 'speech' (faster).
 * ffmpeg: allows to provide a specific binary of ffmpeg instead of default system installation
 
+#### _VBx-based_ models
+
+Another gender segmentation system, which utilizes **x-vectors** (https://github.com/BUTSpeechFIT/VBx), is also available and can be specified in the class constructor for usage:
+* vbx_based (default: False): if set to True, performs gender segmentation using _vbx-based_ system on speech segment. Computation time is longer but gender detection can be better depending on your use (see scoring tables).  
+
+Warning : 'detect_gender' argument must be set to True.
+
+### Gender detection scores
+
+**Frame-level evaluation** (collar = 500ms)
+
+<table style="undefined;table-layout: fixed; width: 552px">
+<colgroup>
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+<col style="width: 69px">
+</colgroup>
+<thead>
+  <tr>
+    <th colspan="2" rowspan="2"></th>
+    <th colspan="2">ESTER</th>
+    <th colspan="2">REPERE</th>
+    <th colspan="2">DATA--INA-FR*</th>
+  </tr>
+  <tr>
+    <th>ISS</th>
+    <th>VBx-based</th>
+    <th>ISS</th>
+    <th>VBx-based</th>
+    <th>ISS</th>
+    <th>VBx-based</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td rowspan="2">Recall</td>
+    <td>Female</td>
+    <td>96,88</td>
+    <td><b>98,97</b></td>
+    <td>95,86</td>
+    <td><b>97,00</b></td>
+    <td>96,15</td>
+    <td><b>97,82</b></td>
+  </tr>
+  <tr>
+    <td>Male</td>
+    <td>99,26</td>
+    <td><b>99,38</b></td>
+    <td><b>98,57</b></td>
+    <td>97,90</td>
+    <td><b>98,55</b></td>
+    <td>95,60</td>
+  </tr>
+  <tr>
+    <td rowspan="2">Precision</td>
+    <td>Female</td>
+    <td>97,53</td>
+    <td><b>97,54</b></td>
+    <td>90,05</td>
+    <td><b>94,95</b></td>
+    <td><b>95,07</b></td>
+    <td>94,47</td>
+  </tr>
+  <tr>
+    <td>Male</td>
+    <td>97,30</td>
+    <td><b>99,61</b></td>
+    <td>98,97</td>
+    <td><b>99,35</b></td>
+    <td>96,47</td>
+    <td><b>96,85</b></td>
+  </tr>
+  <tr>
+    <td colspan="2">F1-score</td>
+    <td>97,74</td>
+    <td><b>98,87</b></td>
+    <td>95,82</td>
+    <td><b>97,29</b></td>
+    <td><b>96,55</b></td>
+    <td>96,16</td>
+  </tr>
+</tbody>
+</table>
+
+\* **DATA-INA-FR** : a new corpus of French audiovisual archives has been annotated. 
+It represents 285 minutes of content from French television and radio channels. 
+This corpus is much noisier, but more representative of the reality of an audiovisual stream. 
+We recommend setting vbx_based to False if you are processing such data.
+
+
+## Using _VBx-Based_ Voice Femininity Scoring
+
+This system can be used to describe voices using a continuous Voice Femininity Percentage (VFP). This system
+is intended for transgender speakers during their voice transition 
+and for voice therapists supporting them in this process. 
+
+The API is illustrated by these 2 notebooks :
+* [Google colab tutorial](https://colab.research.google.com/github/ina-foss/inaSpeechSegmenter/blob/master/tutorials/Demo_INASPeechSegmenter.ipynb): use API online
+* [Jupyter notebook tutorial](tutorials/API_Tutorial_VFS.ipynb) : to be used offline
 
 
 ## Citing
 
 inaSpeechSegmenter has been presented at the IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP) 2018 conference in Calgary, Canada. If you use this toolbox in your research, you can cite the following work in your publications :
-
 
 ```bibtex
 @inproceedings{ddoukhanicassp2018,
@@ -126,7 +229,6 @@ inaSpeechSegmenter won MIREX 2018 speech detection challenge.
 http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results  
 Details on the speech detection submodule can be found bellow:  
 
-
 ```bibtex
 @inproceedings{ddoukhanmirex2018,
   author = {Doukhan, David and Lechapt, Eliott and Evrard, Marc and Carrive, Jean},
@@ -135,6 +237,17 @@ Details on the speech detection submodule can be found bellow:
   booktitle={Music Information Retrieval Evaluation eXchange (MIREX 2018)}
 }
 ```
+
+If you use the Voice Femininity Scoring, you can cite its publication accepted in the 24th INTERSPEECH Conference (2023) in Dublin, Ireland: 
+```bibtex
+@inproceedings{ddoukhaninterspeech2023,
+  author = {Doukhan, David and Devauchelle, Simon and Girard-Monneron Lucile and Wagner, Isabelle and Rilliard Albert.},
+  title = {Voice Passing : a Non-Binary Voice Gender Prediction System  for evaluating Transgender voice transition},
+  year = {2023},
+  booktitle={Interspeech}
+}
+```
+
 
 
 ## CREDITS
@@ -150,3 +263,4 @@ https://git-lium.univ-lemans.fr/Larcher/sidekit
 Relevant contributions to the project were done by:
 * Eliott Lechapt : https://github.com/elechapt
 * Rémi Uro : https://github.com/r-uro
+* Simon Devauchelle : https://github.com/simonD3V
