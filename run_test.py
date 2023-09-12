@@ -66,6 +66,13 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         ref = [('male', 0, 0.66)]
         self.assertEqual(ref, ret)
 
+    def test_vbx_short(self):
+        # TODO : complete with theoretical output
+        seg = Segmenter(vbx_based=True)
+        ret = seg('./media/0021.mp3')
+        #ref = [('male', 0, 0.66)]
+        #self.assertEqual(ref, ret)
+
     def test_boundaries(self):
 
         def seg2str(iseg, tseg):

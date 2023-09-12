@@ -29,7 +29,6 @@ import sys
 
 import numpy as np
 from tensorflow import keras
-from tensorflow.keras.utils import get_file
 from .thread_returning import ThreadReturning
 
 import shutil
@@ -39,7 +38,6 @@ import gc
 
 from skimage.util import view_as_windows as vaw
 
-from pyannote.core import Segment, Annotation, Timeline
 from pyannote.algorithms.utils.viterbi import viterbi_decoding
 from .viterbi_utils import pred2logemission, diag_trans_exp, log_trans_exp
 from .remote_utils import get_remote
@@ -234,6 +232,7 @@ class Segmenter:
                 self.gender = Gender(batch_size)
 
     def segment_feats(self, mspec=None, loge=None, difflen=None, start_sec=None, mspec_vbx=None):
+        # TODO : mspec_vbx should not be argument... refactor ??
         """
         do segmentation
         require input corresponding to wav file sampled at 16000Hz
@@ -258,6 +257,7 @@ class Segmenter:
             else:
                 lseg = self.gender(mspec_vbx, lseg)
 
+        # TODO : 0.2 strange for vbx based
         return [(lab, start_sec + start * .02, start_sec + stop * .02) for lab, start, stop in lseg]
 
 
