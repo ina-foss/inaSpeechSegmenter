@@ -52,6 +52,13 @@ def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmp
         # launch ffmpeg
         p = Popen(args, stdout=PIPE, stderr=PIPE)
         output, error = p.communicate()
+        
+        # error management
+        if p.returncode != 0:
+            if 'No such file or directory' in str(error):
+                raise FileNotFoundError(medianame)
+            elif 'HTTP error 404 Not Found' in str(error):
+                raise FileNotFoundError('Server returned 404 Not Found error for url ' + medianame)
         assert p.returncode == 0, error
 
         # Get Mel Power Spectrogram and Energy
