@@ -53,7 +53,7 @@ class VoiceFemininityScoring:
             compile=False)
 
         # Voice activity detection model
-        self.vad = Segmenter(vad_engine='smn', detect_gender=False)
+        self.vad = Segmenter(vad_engine='smn', gender_engine=None)
 
     def apply_vad(self, segments, timeline):
         res, midpoint_seg = [], []

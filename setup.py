@@ -29,6 +29,8 @@ from setuptools import setup, find_packages
 import versioneer
 
 KEYWORDS = '''
+voice-activity-detection
+speech-activity-detection
 speech-segmentation
 audio-analysis
 music-detection
@@ -41,7 +43,6 @@ speaker-gender
 speech
 music
 noise
-voice-activity-detection
 praat'''.strip().split('\n')
 
 CLASSIFIERS=[

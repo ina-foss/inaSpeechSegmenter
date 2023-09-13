@@ -189,8 +189,8 @@ class Gender(DnnSegmenter):
 
 
 class Segmenter:
-    def __init__(self, vad_engine='smn', detect_gender=True, ffmpeg='ffmpeg', batch_size=32,
-                 energy_ratio=0.03, vbx_based=False):
+    def __init__(self, vad_engine='smn', gender_engine='ic18', ffmpeg='ffmpeg',
+                 batch_size=32, energy_ratio=0.03):
         """
         Load neural network models
         
@@ -201,8 +201,11 @@ class Segmenter:
                         and in MIREX 2018 challenge submission
                 'smn' has been implemented more recently and has not been evaluated in papers
         
-        'detect_gender': if False, speech excerpts are return labelled as 'speech'
-                if True, speech excerpts are splitted into 'male' and 'female' segments
+        'gender_engine': speaker gender segmentation engine (default ic18)
+            if None, speech excerpts are return labelled as 'speech' (faster)
+            Otherwise speech excerpts are splitted into 'male' and 'female' segments
+            if 'ic18' is chosen (default): CNN model presentend at ICASSP 2018 is used
+            if 'is23' is chosen : X-vector model presented at Interspeech 2023 is used (slower)
 
         'batch_size' : large values of batch_size (ex: 1024) allow faster processing times.
                 They also require more memory on the GPU.
@@ -225,15 +228,15 @@ class Segmenter:
             self.vad = SpeechMusicNoise(batch_size)
 
         # load gender detection NN if required
-        assert detect_gender in [True, False]
-        self.detect_gender = detect_gender
-        self.vbx_based = vbx_based
-
-        if detect_gender:
-            if vbx_based:
-                self.gender = VBxSegmenter()
-            else:
-                self.gender = Gender(batch_size)
+        if gender_engine is None or gender_engine.lower() == 'none':
+            self.gender = None
+        elif gender_engine == 'ic18':
+            self.gender = Gender(batch_size)
+        elif gender_engine == 'is23':
+            # TODO : batch_size management
+            self.gender = VBxSegmenter()
+        else:
+            raise ValueError('Invalid value "%s" provided to gender_engine. Allowed values are "ic18", "is23" or None' % gender_engine)
 
     def segment_feats(self, mspec=None, loge=None, difflen=None, start_sec=None, mspec_vbx=None):
         # TODO : mspec_vbx should not be argument... refactor ??
@@ -254,12 +257,14 @@ class Segmenter:
         # perform voice activity detection
         lseg = self.vad(mspec, lseg, difflen)
 
-        # perform gender segmentation on speech segments using the DnnSegmenter Class / VBxSegmenter Class
-        if self.detect_gender:
-            if not self.vbx_based:
-                lseg = self.gender(mspec, lseg, difflen)
-            else:
-                lseg = self.gender(mspec_vbx, lseg)
+        # perform gender segmentation on speech segments using the DnnSegmenter Class / https://www.digitalocean.com/community/tutorials/python-valueerror-exception-handling-examplesVBxSegmenter Class
+        #TODO : all classes should have same signature : 
+        # single feature instance containing all required data)
+        # difflen argument
+        if isinstance(self.gender, Gender):
+            lseg = self.gender(mspec, lseg, difflen)
+        elif isinstance(self.gender, VBxSegmenter):
+            lseg = self.gender(mspec_vbx, lseg)
 
         # TODO : 0.2 strange for vbx based
         return [(lab, start_sec + start * .02, start_sec + stop * .02) for lab, start, stop in lseg]
@@ -280,7 +285,7 @@ class Segmenter:
 
         mspec, loge, difflen = _media2feats(medianame, tmpdir, start_sec, stop_sec, self.ffmpeg)
         mspec_vbx = None
-        if self.vbx_based:
+        if isinstance(self.gender, VBxSegmenter):
             signal = media2sig16kmono(medianame, tmpdir, dtype="float64")
             mspec_vbx = vbx_mel_bands(signal)
 

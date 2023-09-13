@@ -40,10 +40,27 @@ import numpy as np
 import tempfile
 import h5py
 
+from tensorflow.compat.v1 import ConfigProto, Session, reset_default_graph
+from tensorflow.compat.v1.keras.backend import set_session
+
+
 from scripts.ina_speech_segmenter_pyro_server import GenderJobServer
 from inaSpeechSegmenter.io import media2sig16kmono
 
 class TestInaSpeechSegmenter(unittest.TestCase):
+    
+    def setUp(self):
+        # avoid GPU memory errors when running large number of tests
+        config = ConfigProto()
+        config.gpu_options.allow_growth = True
+        sess = Session(config=config)
+        set_session(sess)
+        self.sess = sess
+
+    def tearDown(self):
+        # clear GPU memory after each test
+        self.sess.close()
+        reset_default_graph()
 
     def test_init(self):
         Segmenter()
@@ -69,7 +86,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
 
     def test_vbx_short(self):
         # TODO : complete with theoretical output
-        seg = Segmenter(vbx_based=True)
+        seg = Segmenter(gender_engine='is23')
         ret = seg('./media/0021.mp3')
         #ref = [('male', 0, 0.66)]
         #self.assertEqual(ref, ret)
@@ -122,13 +139,13 @@ class TestInaSpeechSegmenter(unittest.TestCase):
 
     def test_program(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
-            ret = os.system('CUDA_VISIBLE_DEVICES="" ./scripts/ina_speech_segmenter.py -i ./media/0021.mp3 -o %s' % tmpdirname)
+            ret = os.system('./scripts/ina_speech_segmenter.py -i ./media/0021.mp3 -o %s' % tmpdirname)
             self.assertEqual(ret, 0, 'ina_speech_segmenter returned error code %d' % ret)
             self.assertTrue(os.path.isfile('%s/%s' % (tmpdirname, '0021.csv')))
 
     def test_program_smn(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
-            ret = os.system('CUDA_VISIBLE_DEVICES="" ./scripts/ina_speech_segmenter.py -i ./media/0021.mp3 ./media/musanmix.mp3 ./media/silence2sec.wav -o %s' % tmpdirname)
+            ret = os.system('./scripts/ina_speech_segmenter.py -i ./media/0021.mp3 ./media/musanmix.mp3 ./media/silence2sec.wav -o %s' % tmpdirname)
             self.assertEqual(ret, 0, 'ina_speech_segmenter returned error code %d' % ret)
             self.assertTrue(filecmp.cmp(os.path.join(tmpdirname, '0021.csv'), './media/0021-smn-gender.csv'))
             self.assertTrue(filecmp.cmp(os.path.join(tmpdirname, 'musanmix.csv'), './media/musanmix-smn-gender.csv'))
@@ -190,7 +207,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
         self.assertEqual(len(x_vectors), 56)
 
     def test_vbx_segmenter(self):
-        v = Segmenter(vad_engine="smn", detect_gender=True, vbx_based=True)
+        v = Segmenter(vad_engine="smn", gender_engine='is23')
         seg_pred = v('./media/lamartine.wav')
         df_test = pd.read_csv('./media/vbx_seg.csv', sep='\t')
         seg_test = [(row["labels"], row["start"], row["stop"]) for _, row in df_test.iterrows()]
