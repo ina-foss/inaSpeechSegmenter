@@ -152,7 +152,7 @@ def cmvn_floating_kaldi(x, LC, RC, norm_vars=True):
         x /= np.sqrt((f[win_start+win_len] - f[win_start]) / win_len)
     return x
 
-def vbx_mel_bands(signal, LC=150, RC=149):
+def vbx_melbands(signal, LC=150, RC=149):
     """
     This code function is entirely copied from the VBx script 'predict.py'
     https://github.com/BUTSpeechFIT/VBx/blob/master/VBx/predict.py

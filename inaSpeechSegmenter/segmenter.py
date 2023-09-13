@@ -49,7 +49,7 @@ from .utils import binidx2seglist
 from .io import media2sig16kmono
 
 from .sidekit_mfcc import mfcc
-from .features_vbx import vbx_mel_bands
+from .vbx_melbands import vbx_melbands
 
 import warnings
 
@@ -287,7 +287,7 @@ class Segmenter:
         mspec_vbx = None
         if isinstance(self.gender, VBxSegmenter):
             signal = media2sig16kmono(medianame, tmpdir, dtype="float64")
-            mspec_vbx = vbx_mel_bands(signal)
+            mspec_vbx = vbx_melbands(signal)
 
         if start_sec is None:
             start_sec = 0

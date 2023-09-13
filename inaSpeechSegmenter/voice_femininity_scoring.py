@@ -10,7 +10,7 @@ from .segmenter import Segmenter
 from .io import media2sig16kmono
 from .remote_utils import get_remote
 from .utils import OnnxBackendExtractor, is_mid_speech, add_needed_seg, get_timecodes, get_timeline, get_femininity_score
-from .features_vbx import vbx_mel_bands
+from .vbx_melbands import vbx_melbands
 
 # torch.backends.cudnn.enabled = True
 
@@ -94,7 +94,7 @@ class VoiceFemininityScoring:
         if speech_timeline.duration():
 
             # Processing features (mel bands extraction)
-            features = vbx_mel_bands(signal)
+            features = vbx_melbands(signal)
 
             # VAD application
             segments = get_timecodes(len(features), duration)
