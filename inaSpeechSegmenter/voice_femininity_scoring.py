@@ -86,6 +86,7 @@ class VoiceFemininityScoring:
 
         # Applying voice activity detection
         vad_seg = self.vad.segment_feats(feats)
+        # convert to pyannote annotation and keep only speech segments
         speech_timeline = get_timeline(vad_seg)
 
         # if no speech is detected, return

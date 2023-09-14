@@ -62,12 +62,8 @@ def add_needed_seg(segments, t_mid):
 
 
 def get_femininity_score(g_preds):
-    a_temp = Annotation()
-    for start, stop, p in g_preds:
-        a_temp[Segment(start, stop), '_'] = (p >= 0.5)
-
-    # Return binary score and number of retained predictions
-    return len(a_temp.label_timeline(True)) / len(a_temp)
+    # percentage of female predictions
+    return np.mean([p >= 0.5 for _, _, p in g_preds])
 
 
 def get_timeline(vad_tuples):
@@ -79,6 +75,9 @@ def get_timecodes(flength, duration):
     Return list of (seg_start, seg_end) based on len(features)
     """
     res = [(round(i / 100.0, 3), (round((i + WINLEN) / 100.0, 3))) for i in range(0, flength - WINLEN, STEP)]
+    
+    if len(res) == 0:
+        return [(0., duration)]
     lstart_seg = res[-1][0]
     if flength - (lstart_seg*100) - STEP >= 10:
         res.append((round(lstart_seg + STEP / 100.0, 3), round(duration, 2)))

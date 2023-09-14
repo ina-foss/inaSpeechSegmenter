@@ -1,6 +1,4 @@
-import os
 import numpy as np
-
 import keras
 from librosa.sequence import transition_loop, viterbi
 
@@ -32,13 +30,17 @@ def get_timecodes(flength):
     Remark : This method is different from the ones used in VoiceFemininityScoring
     """
 
+    last_start = 0
+
     res = [(round(i / 100.0, 3), (round((i + WINLEN) / 100.0, 3))) for i in range(0, flength - WINLEN, STEP)]
-    lstart_seg = res[-1][0]
+    
+    if len(res) != 0:
+        last_start = res[-1][0]
 
     # Add last segments (as long as segment duration is > 100 ms)
-    while flength - (lstart_seg * 100) - STEP > 10:
-        res.append((round(lstart_seg + STEP / 100.0, 3), round(flength / 100, 2)))
-        lstart_seg = res[-1][0]
+    while flength - (last_start * 100) - STEP > 10:
+        res.append((round(last_start + STEP / 100.0, 3), round(flength / 100, 2)))
+        last_start = res[-1][0]
 
     return res
 
@@ -64,7 +66,7 @@ class VBxSegmenter:
 
         mspec = feats.mspec_vbx        
 
-        # Convert in sec
+        # Convert in sec (in future should be done outside this method)
         lseg = [(lab, start * 0.02, stop * 0.02) for lab, start, stop in lseg]
 
         # Get timecodes of each segment
