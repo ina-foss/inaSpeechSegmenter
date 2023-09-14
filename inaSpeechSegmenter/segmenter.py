@@ -26,9 +26,22 @@
 
 import os
 import sys
-
 import numpy as np
+
+
+
+# Tells GPU not to use all available memory
+import tensorflow as tf
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+  try:
+    for gpu in gpus:
+      tf.config.experimental.set_memory_growth(gpu, True)
+  except RuntimeError as e:
+    print(e)
 from tensorflow import keras
+
+
 from .thread_returning import ThreadReturning
 
 import shutil

@@ -218,6 +218,28 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             np.testing.assert_almost_equal(start1, start2, decimal=2)
             np.testing.assert_almost_equal(stop1, stop2, decimal=2)
 
+    def test_batch_vbx(self):
+        seg = Segmenter(vad_engine="smn", gender_engine='is23')
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            lout = [os.path.join(tmpdirname, '1.csv'), os.path.join(tmpdirname, '2.csv')]
+            ret = seg.batch_process(['./media/lamartine.wav', './media/lamartine.wav'], lout)
+            self.assertTrue(filecmp.cmp(lout[0], lout[1]))
+            self.assertTrue(filecmp.cmp(lout[0], './media/vbx_seg.csv'))
+
+    
+    def test_program_vbx(self):
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            ret = os.system('./scripts/ina_speech_segmenter.py -i ./media/lamartine.wav -g is23 -o %s' % tmpdirname)
+            self.assertEqual(ret, 0, 'ina_speech_segmenter returned error code %d' % ret)
+            fpred = '%s/%s' % (tmpdirname, 'lamartine.csv')
+            self.assertTrue(os.path.isfile(fpred))
+            with open(fpred) as fid:
+                pred = list(fid)
+            with open('./media/vbx_seg.csv') as fid:
+                ref = list(fid)
+            self.assertListEqual(pred, ref)
+            
+
     # def test_vfs_backend_scores(self):
     #     media = './media/lamartine.wav'
     #     v_p = VoiceFemininityScoring(backend='pytorch')
