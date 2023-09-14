@@ -29,7 +29,8 @@ import os
 import warnings
 from inaSpeechSegmenter import Segmenter
 # from inaSpeechSegmenter.features import _wav2feats
-from inaSpeechSegmenter.segmenter import _media2feats
+#from inaSpeechSegmenter.segmenter import _media2feats
+from inaSpeechSegmenter.segmenter import CpuFeatExtractor
 from inaSpeechSegmenter.voice_femininity_scoring import VoiceFemininityScoring
 from inaSpeechSegmenter.utils import get_timecodes, OnnxBackendExtractor
 from inaSpeechSegmenter.vbx_melbands import vbx_melbands
@@ -73,8 +74,9 @@ class TestInaSpeechSegmenter(unittest.TestCase):
 
     def test_silence_features(self):
         # test empty signal do not result in warnings
+        xtractor = CpuFeatExtractor(True, True, 'ffmpeg', None)
         with warnings.catch_warnings(record=True) as w:
-            _media2feats('./media/silence2sec.wav', None, None, None, 'ffmpeg')
+            xtractor('./media/silence2sec.wav', None, None)
             assert len(w) == 0, [str(e) for e in w]
 
 

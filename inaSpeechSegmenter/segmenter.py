@@ -55,22 +55,74 @@ import warnings
 
 from .export_funcs import seg2csv, seg2textgrid
 
-def _media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg):
-    sig = media2sig16kmono(medianame, tmpdir, start_sec, stop_sec, ffmpeg, 'float32')
-    with warnings.catch_warnings():
-        # ignore warnings resulting from empty signals parts
-        warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning)
-        _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
 
-    # Management of short duration segments
-    difflen = 0
-    if len(loge) < 68:
-        difflen = 68 - len(loge)
-        warnings.warn(
-            "media %s duration is short. Robust results require length of at least 720 milliseconds" % medianame)
-        mspec = np.concatenate((mspec, np.ones((difflen, 24)) * np.min(mspec)))
+import types
 
-    return mspec, loge, difflen
+class CpuFeatExtractor:
+    """
+    Extract all CPU features from audio or video document
+    this includes : 
+        * download from a remote location
+        * transcoding to wav 16k
+        * mel bands extraction with sidekits and/or librosa
+    Depending on use-case, this can be used asynchronously in parallel with
+    other GPU-based processings
+    """
+    def __init__(self, sdkmel, vbxmel, ffmpeg, tmpdir):
+        self.sdkmel = sdkmel
+        self.vbxmel = vbxmel
+
+        # test ffmpeg installation
+        if shutil.which(ffmpeg) is None:
+            raise (Exception("""ffmpeg program not found"""))
+        self.ffmpeg = ffmpeg
+        self.tmpdir = tmpdir
+        
+    def __call__(self, medianame, start_sec, stop_sec):
+        sig = media2sig16kmono(medianame, self.tmpdir, start_sec, stop_sec, ffmpeg=self.ffmpeg, dtype="float64")
+        ret = types.SimpleNamespace()
+        
+        if self.sdkmel:
+
+            with warnings.catch_warnings():
+                # ignore warnings resulting from empty signals parts
+                warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning)
+                _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
+        
+            # Management of short duration segments
+            difflen = 0
+            if len(loge) < 68:
+                difflen = 68 - len(loge)
+                warnings.warn(
+                    "media %s duration is short. Robust results require length of at least 720 milliseconds" % medianame)
+                mspec = np.concatenate((mspec, np.ones((difflen, 24)) * np.min(mspec)))
+                
+            ret.mspec, ret.loge, ret.difflen = (mspec, loge, difflen)
+        
+        if self.vbxmel:
+            ret.mspec_vbx = vbx_melbands(sig)
+        
+        return ret
+
+
+
+
+# def tmpmedia2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg):
+#     sig = media2sig16kmono(medianame, tmpdir, start_sec, stop_sec, ffmpeg, 'float32')
+#     with warnings.catch_warnings():
+#         # ignore warnings resulting from empty signals parts
+#         warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning)
+#         _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
+
+#     # Management of short duration segments
+#     difflen = 0
+#     if len(loge) < 68:
+#         difflen = 68 - len(loge)
+#         warnings.warn(
+#             "media %s duration is short. Robust results require length of at least 720 milliseconds" % medianame)
+#         mspec = np.concatenate((mspec, np.ones((difflen, 24)) * np.min(mspec)))
+
+#     return mspec, loge, difflen
 
 def _energy_activity(loge, ratio):
     threshold = np.mean(loge[np.isfinite(loge)]) + np.log(ratio)
@@ -190,7 +242,7 @@ class Gender(DnnSegmenter):
 
 class Segmenter:
     def __init__(self, vad_engine='smn', gender_engine='ic18', ffmpeg='ffmpeg',
-                 batch_size=32, energy_ratio=0.03):
+                 batch_size=32, energy_ratio=0.03, tmpdir=None):
         """
         Load neural network models
         
@@ -210,12 +262,11 @@ class Segmenter:
         'batch_size' : large values of batch_size (ex: 1024) allow faster processing times.
                 They also require more memory on the GPU.
                 default value (32) is slow, but works on any hardware
+        'tmpdir' : allow to define a custom path for storing temporary files
+                fast read/write HD are a good choice
         """
 
-        # test ffmpeg installation
-        if shutil.which(ffmpeg) is None:
-            raise (Exception("""ffmpeg program not found"""))
-        self.ffmpeg = ffmpeg
+        extract_vbx_mels = False
 
         # set energic ratio for 1st VAD
         self.energy_ratio = energy_ratio
@@ -227,6 +278,8 @@ class Segmenter:
         elif vad_engine == 'smn':
             self.vad = SpeechMusicNoise(batch_size)
 
+
+
         # load gender detection NN if required
         if gender_engine is None or gender_engine.lower() == 'none':
             self.gender = None
@@ -235,8 +288,11 @@ class Segmenter:
         elif gender_engine == 'is23':
             # TODO : batch_size management
             self.gender = VBxSegmenter()
+            extract_vbx_mels = True
         else:
             raise ValueError('Invalid value "%s" provided to gender_engine. Allowed values are "ic18", "is23" or None' % gender_engine)
+            
+        self.feat_extractor = CpuFeatExtractor(True, extract_vbx_mels, ffmpeg, tmpdir)
 
     def segment_feats(self, mspec=None, loge=None, difflen=None, start_sec=None, mspec_vbx=None):
         # TODO : mspec_vbx should not be argument... refactor ??
@@ -257,7 +313,7 @@ class Segmenter:
         # perform voice activity detection
         lseg = self.vad(mspec, lseg, difflen)
 
-        # perform gender segmentation on speech segments using the DnnSegmenter Class / https://www.digitalocean.com/community/tutorials/python-valueerror-exception-handling-examplesVBxSegmenter Class
+        # perform gender segmentation on speech segments using the DnnSegmenter Class/ VBxSegmenter Class
         #TODO : all classes should have same signature : 
         # single feature instance containing all required data)
         # difflen argument
@@ -270,31 +326,33 @@ class Segmenter:
         return [(lab, start_sec + start * .02, start_sec + stop * .02) for lab, start, stop in lseg]
 
 
-    def __call__(self, medianame, tmpdir=None, start_sec=None, stop_sec=None):
+    def __call__(self, medianame, start_sec=None, stop_sec=None):
         """
         Return segmentation of a given file
                 * convert file to wav 16k mono with ffmpeg
                 * call NN segmentation procedures
         * media_name: path to the media to be processed (including remote url)
                 may include any format supported by ffmpeg
-        * tmpdir: allow to define a custom path for storing temporary files
-                fast read/write HD are a good choice
         * start_sec (seconds): sound stream before start_sec won't be processed
         * stop_sec (seconds): sound stream after stop_sec won't be processed
         """
 
-        mspec, loge, difflen = _media2feats(medianame, tmpdir, start_sec, stop_sec, self.ffmpeg)
+        #mspec, loge, difflen = _media2feats(medianame, tmpdir, start_sec, stop_sec, self.ffmpeg)
+        feats = self.feat_extractor(medianame, start_sec, stop_sec)
+        mspec = feats.mspec
+        loge = feats.loge
+        difflen = feats.difflen
+
         mspec_vbx = None
         if isinstance(self.gender, VBxSegmenter):
-            signal = media2sig16kmono(medianame, tmpdir, dtype="float64")
-            mspec_vbx = vbx_melbands(signal)
+            mspec_vbx = feats.mspec_vbx
 
         if start_sec is None:
             start_sec = 0
         # do segmentation   
         return self.segment_feats(mspec, loge, difflen, start_sec, mspec_vbx)
 
-    def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2.,
+    def batch_process(self, linput, loutput, verbose=False, skipifexist=False, nbtry=1, trydelay=2.,
                       output_format='csv'):
 
         if verbose:
@@ -310,7 +368,7 @@ class Segmenter:
         t_batch_start = time.time()
 
         lmsg = []
-        fg = featGenerator(linput.copy(), loutput.copy(), tmpdir, self.ffmpeg, skipifexist, nbtry, trydelay)
+        fg = featGenerator(self.feat_extractor, linput.copy(), loutput.copy(), skipifexist, nbtry, trydelay)
         i = 0
         for feats, msg in fg:
             lmsg += msg
@@ -319,11 +377,11 @@ class Segmenter:
                 print('%d/%d' % (i, len(linput)), msg)
             if feats is None:
                 break
-            mspec, loge, difflen = feats
+            #mspec, loge, difflen = feats
             # if verbose == True:
             #    print(i, linput[i], loutput[i])
             b = time.time()
-            lseg = self.segment_feats(mspec, loge, difflen, 0)
+            lseg = self.segment_feats(feats.mspec, feats.loge, feats.difflen, 0)
             fexport(lseg, loutput[len(lmsg) - 1])
             lmsg[-1] = (lmsg[-1][0], lmsg[-1][1], 'ok ' + str(time.time() - b))
 
@@ -336,7 +394,7 @@ class Segmenter:
         return t_batch_dur, nb_processed, avg, lmsg
 
 
-def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
+def medialist2feats(extractor, lin, lout, skipifexist, nbtry, trydelay):
     """
     To be used when processing batches
     if resulting file exists, it is skipped
@@ -361,7 +419,7 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
         itry = 0
         while ret is None and itry < nbtry:
             try:
-                ret = _media2feats(src, tmpdir, None, None, ffmpeg)
+                ret = extractor(src, None, None)
             except:
                 itry += 1
                 errmsg = sys.exc_info()[0]
@@ -375,15 +433,15 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
     return ret, msg
 
 
-def featGenerator(ilist, olist, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, nbtry=1, trydelay=2.):
-    thread = ThreadReturning(target=medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay])
+def featGenerator(extractor, ilist, olist, skipifexist=False, nbtry=1, trydelay=2.):
+    thread = ThreadReturning(target=medialist2feats, args=[extractor, ilist, olist, skipifexist, nbtry, trydelay])
     thread.start()
     while True:
         ret, msg = thread.join()
         if len(ilist) == 0:
             break
         thread = ThreadReturning(target=medialist2feats,
-                                 args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay])
+                                 args=[extractor, ilist, olist, skipifexist, nbtry, trydelay])
         thread.start()
         yield ret, msg
     yield ret, msg
