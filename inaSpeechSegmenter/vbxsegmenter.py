@@ -59,7 +59,10 @@ class VBxSegmenter:
         # Parameters for features extraction
         self.outlabels = ('male', 'female')
 
-    def __call__(self, mspec, lseg):
+    def __call__(self, feats, lseg):
+
+
+        mspec = feats.mspec_vbx        
 
         # Convert in sec
         lseg = [(lab, start * 0.02, stop * 0.02) for lab, start, stop in lseg]

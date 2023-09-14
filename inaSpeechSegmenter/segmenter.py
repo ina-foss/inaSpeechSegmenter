@@ -79,11 +79,22 @@ class CpuFeatExtractor:
         self.tmpdir = tmpdir
         
     def __call__(self, medianame, start_sec, stop_sec):
-        sig = media2sig16kmono(medianame, self.tmpdir, start_sec, stop_sec, ffmpeg=self.ffmpeg, dtype="float64")
-        ret = types.SimpleNamespace()
         
-        if self.sdkmel:
+        # result container
+        ret = types.SimpleNamespace()
 
+        # start_sec seconds will be skipped from decoding and feature xtraction
+        # this offset should be kept
+        if start_sec is None:
+            ret.start_sec = 0
+        else:
+            ret.start_sec = start_sec
+        
+        # transcoding to wav16k
+        sig = media2sig16kmono(medianame, self.tmpdir, start_sec, stop_sec, ffmpeg=self.ffmpeg, dtype="float64")
+        
+        # sidekits mel bands xtraction (default)
+        if self.sdkmel:
             with warnings.catch_warnings():
                 # ignore warnings resulting from empty signals parts
                 warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning)
@@ -99,30 +110,11 @@ class CpuFeatExtractor:
                 
             ret.mspec, ret.loge, ret.difflen = (mspec, loge, difflen)
         
+        # librosa mel bands xtraction
         if self.vbxmel:
             ret.mspec_vbx = vbx_melbands(sig)
         
         return ret
-
-
-
-
-# def tmpmedia2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg):
-#     sig = media2sig16kmono(medianame, tmpdir, start_sec, stop_sec, ffmpeg, 'float32')
-#     with warnings.catch_warnings():
-#         # ignore warnings resulting from empty signals parts
-#         warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning)
-#         _, loge, _, mspec = mfcc(sig.astype(np.float32), get_mspec=True)
-
-#     # Management of short duration segments
-#     difflen = 0
-#     if len(loge) < 68:
-#         difflen = 68 - len(loge)
-#         warnings.warn(
-#             "media %s duration is short. Robust results require length of at least 720 milliseconds" % medianame)
-#         mspec = np.concatenate((mspec, np.ones((difflen, 24)) * np.min(mspec)))
-
-#     return mspec, loge, difflen
 
 def _energy_activity(loge, ratio):
     threshold = np.mean(loge[np.isfinite(loge)]) + np.log(ratio)
@@ -168,7 +160,7 @@ class DnnSegmenter:
         self.nn.run_eagerly = False
         self.batch_size = batch_size
 
-    def __call__(self, mspec, lseg, difflen=0):
+    def __call__(self, feats, lseg):
         """
         *** input
         * mspec: mel spectrogram
@@ -178,6 +170,9 @@ class DnnSegmenter:
         *** output
         a list of adjacent tuples (label, start, stop)
         """
+
+        mspec = feats.mspec
+        difflen = feats.difflen
 
         if self.nmel < 24:
             mspec = mspec[:, :self.nmel].copy()
@@ -294,7 +289,7 @@ class Segmenter:
             
         self.feat_extractor = CpuFeatExtractor(True, extract_vbx_mels, ffmpeg, tmpdir)
 
-    def segment_feats(self, mspec=None, loge=None, difflen=None, start_sec=None, mspec_vbx=None):
+    def segment_feats(self, feats):
         # TODO : mspec_vbx should not be argument... refactor ??
         """
         do segmentation
@@ -303,7 +298,7 @@ class Segmenter:
         """
         # perform energy-based activity detection
         lseg = []
-        for lab, start, stop in binidx2seglist(_energy_activity(loge, self.energy_ratio)[::2]):
+        for lab, start, stop in binidx2seglist(_energy_activity(feats.loge, self.energy_ratio)[::2]):
             if lab == 0:
                 lab = 'noEnergy'
             else:
@@ -311,18 +306,17 @@ class Segmenter:
             lseg.append((lab, start, stop))
 
         # perform voice activity detection
-        lseg = self.vad(mspec, lseg, difflen)
+        lseg = self.vad(feats, lseg)
 
         # perform gender segmentation on speech segments using the DnnSegmenter Class/ VBxSegmenter Class
         #TODO : all classes should have same signature : 
         # single feature instance containing all required data)
         # difflen argument
-        if isinstance(self.gender, Gender):
-            lseg = self.gender(mspec, lseg, difflen)
-        elif isinstance(self.gender, VBxSegmenter):
-            lseg = self.gender(mspec_vbx, lseg)
+        if self.gender is not None:
+            lseg = self.gender(feats, lseg)
 
         # TODO : 0.2 strange for vbx based
+        start_sec = feats.start_sec
         return [(lab, start_sec + start * .02, start_sec + stop * .02) for lab, start, stop in lseg]
 
 
@@ -337,21 +331,12 @@ class Segmenter:
         * stop_sec (seconds): sound stream after stop_sec won't be processed
         """
 
-        #mspec, loge, difflen = _media2feats(medianame, tmpdir, start_sec, stop_sec, self.ffmpeg)
+        # extract CPU features
         feats = self.feat_extractor(medianame, start_sec, stop_sec)
-        mspec = feats.mspec
-        loge = feats.loge
-        difflen = feats.difflen
-
-        mspec_vbx = None
-        if isinstance(self.gender, VBxSegmenter):
-            mspec_vbx = feats.mspec_vbx
-
-        if start_sec is None:
-            start_sec = 0
-        # do segmentation   
-        return self.segment_feats(mspec, loge, difflen, start_sec, mspec_vbx)
-
+        # do GPU processings from CPU features
+        return self.segment_feats(feats)
+        
+    
     def batch_process(self, linput, loutput, verbose=False, skipifexist=False, nbtry=1, trydelay=2.,
                       output_format='csv'):
 
@@ -381,7 +366,7 @@ class Segmenter:
             # if verbose == True:
             #    print(i, linput[i], loutput[i])
             b = time.time()
-            lseg = self.segment_feats(feats.mspec, feats.loge, feats.difflen, 0)
+            lseg = self.segment_feats(feats)
             fexport(lseg, loutput[len(lmsg) - 1])
             lmsg[-1] = (lmsg[-1][0], lmsg[-1][1], 'ok ' + str(time.time() - b))
 
