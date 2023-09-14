@@ -2,12 +2,14 @@ import numpy as np
 import keras
 from librosa.sequence import transition_loop, viterbi
 
-from .utils import OnnxBackendExtractor, get_timeline, binidx2seglist
+from pyannote.core import Segment, Timeline
+
+from .utils import OnnxBackendExtractor, binidx2seglist
 from .remote_utils import get_remote
 
 WINLEN = 144
 STEP = 24
-VITERBI_PR = 0.99999994
+
 
 
 def get_indices(segments, vad_timeline):
@@ -28,25 +30,15 @@ def get_timecodes(flength):
     """
     Return list of (seg_start, seg_end) based on len(features)
     Remark : This method is different from the ones used in VoiceFemininityScoring
-    """
-
-    last_start = 0
-
-    res = [(round(i / 100.0, 3), (round((i + WINLEN) / 100.0, 3))) for i in range(0, flength - WINLEN, STEP)]
     
-    if len(res) != 0:
-        last_start = res[-1][0]
-
-    # Add last segments (as long as segment duration is > 100 ms)
-    while flength - (last_start * 100) - STEP > 10:
-        res.append((round(last_start + STEP / 100.0, 3), round(flength / 100, 2)))
-        last_start = res[-1][0]
-
-    return res
+    # length of signal mel bands sampled with step size 10 ms
+    # tc should contain WINLEN = 144 frames. Il signal is small it should contain at least 10 frames
+    """
+    return [(round(i / 100.0, 3), round(min(i + WINLEN, flength) / 100.0, 3)) for i in range(0, flength - 10, STEP)]
 
 
 class VBxSegmenter:
-    def __init__(self):
+    def __init__(self, viterbi_pr = 0.99999994):
         """
         Load VBx model weights for gender detection
         (See : https://github.com/BUTSpeechFIT/VBx)
@@ -60,6 +52,8 @@ class VBxSegmenter:
 
         # Parameters for features extraction
         self.outlabels = ('male', 'female')
+        
+        self.viterbi_pr = viterbi_pr
 
     def __call__(self, feats, lseg):
 
@@ -80,9 +74,10 @@ class VBxSegmenter:
                 continue
 
             # Keep segment label whose segment midpoint is in a speech segment
-            i, j = get_indices(vbx_segments, get_timeline([(lab, start, stop)]))
+            tl = Timeline(segments=[Segment(start, stop)])
+            i, j = get_indices(vbx_segments, tl)
 
-            # Get xvector (entire file)
+            # Get xvector
             x_vectors = self.xvector_model(vbx_segments[i:j], mspec)
             x = np.asarray([x for _, x in x_vectors])
 
@@ -94,7 +89,7 @@ class VBxSegmenter:
 
             # Viterbi (librosa)
             r = np.vstack([1 - gender_pred, gender_pred])
-            pred = viterbi(r, transition_loop(2, prob=VITERBI_PR))
+            pred = viterbi(r, transition_loop(2, prob=self.viterbi_pr))
 
             for lab2, start2, stop2 in binidx2seglist(pred):
                 start2, stop2 = round((STEP*0.01) * start2, 2), round((STEP*0.01) * stop2, 2)
