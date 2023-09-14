@@ -1,21 +1,16 @@
 import numpy as np
-#import logging
-# import torch.backends
 
 import keras
 from pyannote.core import Segment, Timeline
 
-# from .resnet import ResNet101
+
 from .segmenter import Segmenter
-from .io import media2sig16kmono
 from .remote_utils import get_remote
 from .utils import OnnxBackendExtractor, is_mid_speech, add_needed_seg, get_timecodes, get_timeline, get_femininity_score
-from .vbx_melbands import vbx_melbands
 
 # torch.backends.cudnn.enabled = True
 
-SR = 16000
-
+from .media2feats import CpuFeatExtractor
 
 
 class VoiceFemininityScoring:
@@ -23,7 +18,7 @@ class VoiceFemininityScoring:
     Perform VBx features extraction and give a voice femininity score.
     """
 
-    def __init__(self, gd_model_criteria="bgc", backend='onnx'):
+    def __init__(self, gd_model_criteria="bgc", backend='onnx', ffmpeg='ffmpeg', tmpdir=None):
         """
         Load VBx model weights according to the chosen backend
         (See : https://github.com/BUTSpeechFIT/VBx)
@@ -53,7 +48,9 @@ class VoiceFemininityScoring:
             compile=False)
 
         # Voice activity detection model
-        self.vad = Segmenter(vad_engine='smn', gender_engine=None)
+        self.vad = Segmenter(vad_engine='smn', gender_engine=None, ffmpeg=ffmpeg, tmpdir=tmpdir)
+        self.feat_extractor = CpuFeatExtractor(True, True, ffmpeg, tmpdir)
+
 
     def apply_vad(self, segments, timeline):
         res, midpoint_seg = [], []
@@ -73,7 +70,7 @@ class VoiceFemininityScoring:
         # Add segments with vad-overlap if too many predictions have been removed
         return add_needed_seg(res, midpoint_seg)
 
-    def __call__(self, fpath, tmpdir=None):
+    def __call__(self, fpath):
         """
         Return Voice Femininity Score of a given file with values before last sigmoid activation :
                 * convert file to wav 16k mono with ffmpeg
@@ -83,39 +80,41 @@ class VoiceFemininityScoring:
                 * apply gender detection model and compute femininity score
                 * return score, duration of detected speech and number of retained x-vectors
         """
-        # Read "wav" file
-        signal = media2sig16kmono(fpath, tmpdir, dtype="float64")
-        duration = len(signal) / SR
+
+        # extract features & decode sound file
+        feats = self.feat_extractor(fpath, None, None)
 
         # Applying voice activity detection
-        vad_seg = self.vad(fpath)
+        vad_seg = self.vad.segment_feats(feats)
         speech_timeline = get_timeline(vad_seg)
 
-        if speech_timeline.duration():
+        # if no speech is detected, return
+        if not speech_timeline.duration():
+            return None, speech_timeline.duration(), 0
 
-            # Processing features (mel bands extraction)
-            features = vbx_melbands(signal)
+        # we use vbx mel bands
+        features = feats.mspec_vbx
+        duration = feats.duration
 
-            # VAD application
-            segments = get_timecodes(len(features), duration)
-            retained_seg = self.apply_vad(segments, speech_timeline)
+        # VAD application
+        segments = get_timecodes(len(features), duration)
+        retained_seg = self.apply_vad(segments, speech_timeline)
 
-            # Get xvector embeddings
-            x_vectors = self.xvector_model(retained_seg, features)
+        # Get xvector embeddings
+        x_vectors = self.xvector_model(retained_seg, features)
 
-            # Applying gender detection (pretrained Multi layer perceptron)
-            x = np.asarray([x for _, x in x_vectors])
-            gender_pred = self.gender_detection_mlp_model.predict(x, verbose=0)
-            if len(gender_pred) > 1:
-                gender_pred = np.squeeze(gender_pred)
+        # Applying gender detection (pretrained Multi layer perceptron)
+        x = np.asarray([x for _, x in x_vectors])
+        gender_pred = self.gender_detection_mlp_model.predict(x, verbose=0)
+        if len(gender_pred) > 1:
+            gender_pred = np.squeeze(gender_pred)
 
-            # Link segment start/stop from x-vectors extraction to gender predictions
-            gender_pred = np.asarray(
-                [(segtup[0], segtup[1], pred) for (segtup, _), pred in zip(x_vectors, gender_pred)])
+        # Link segment start/stop from x-vectors extraction to gender predictions
+        gender_pred = np.asarray(
+            [(segtup[0], segtup[1], pred) for (segtup, _), pred in zip(x_vectors, gender_pred)])
 
-            score, nb_vectors = get_femininity_score(gender_pred), len(gender_pred)
+        score, nb_vectors = get_femininity_score(gender_pred), len(gender_pred)
 
-        else:
-            score, nb_vectors = None, 0
+
 
         return score, speech_timeline.duration(), nb_vectors

@@ -28,9 +28,6 @@ import unittest
 import os
 import warnings
 from inaSpeechSegmenter import Segmenter
-# from inaSpeechSegmenter.features import _wav2feats
-#from inaSpeechSegmenter.segmenter import _media2feats
-from inaSpeechSegmenter.segmenter import CpuFeatExtractor
 from inaSpeechSegmenter.voice_femininity_scoring import VoiceFemininityScoring
 from inaSpeechSegmenter.utils import get_timecodes, OnnxBackendExtractor
 from inaSpeechSegmenter.vbx_melbands import vbx_melbands
@@ -46,7 +43,7 @@ from tensorflow.compat.v1.keras.backend import set_session
 
 
 from scripts.ina_speech_segmenter_pyro_server import GenderJobServer
-from inaSpeechSegmenter.io import media2sig16kmono
+from inaSpeechSegmenter.media2feats import media2sig16kmono, CpuFeatExtractor
 
 class TestInaSpeechSegmenter(unittest.TestCase):
     
