@@ -40,7 +40,7 @@ import gc
 from skimage.util import view_as_windows as vaw
 
 
-from pyannote.algorithms.utils.viterbi import viterbi_decoding
+from .pyannote_viterbi import viterbi_decoding
 from .viterbi_utils import pred2logemission, diag_trans_exp, log_trans_exp
 from .remote_utils import get_remote
 
