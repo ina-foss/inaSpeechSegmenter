@@ -108,7 +108,7 @@ setup(
     test_suite="run_test.py",
     description = DESCRIPTION,
     license = "MIT",
-    install_requires=['tensorflow', 'numpy', 'pandas', 'scikit-image', 'pyannote.core', 'matplotlib', 'Pyro4', 'pytextgrid', 'soundfile', 'onnxruntime-gpu'], #'torch'
+    install_requires=['tensorflow[and-cuda]', 'numpy', 'pandas', 'scikit-image', 'pyannote.core', 'matplotlib', 'Pyro4', 'pytextgrid', 'soundfile', 'onnxruntime-gpu'], #'torch'
  #   keywords = "example documentation tutorial",
     url = "https://github.com/ina-foss/inaSpeechSegmenter",
 #    packages=['inaSpeechSegmenter'],

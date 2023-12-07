@@ -28,7 +28,6 @@ import glob
 import os
 import distutils.util
 import warnings
-
 # TODO
 # * allow to use external activity or speech music segmentations
 # * describe URL management in help and interference with glob
@@ -68,14 +67,11 @@ assert os.access(odir, os.W_OK), 'Directory %s is not writable!' % odir
 
 # Do processings
 from inaSpeechSegmenter import Segmenter, seg2csv
-
 # load neural network into memory, may last few seconds
 detect_gender = bool(distutils.util.strtobool(args.detect_gender))
 seg = Segmenter(vad_engine=args.vad_engine, detect_gender=detect_gender, ffmpeg=args.ffmpeg_binary, energy_ratio=args.energy_ratio, batch_size=args.batch_size)
-
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     base = [os.path.splitext(os.path.basename(e))[0] for e in input_files]
     output_files = [os.path.join(odir, e + '.' + args.export_format) for e in base]
     seg.batch_process(input_files, output_files, verbose=True, output_format=args.export_format)
-
