@@ -49,7 +49,7 @@ from .sidekit_mfcc import mfcc
 import warnings
 
 from .export_funcs import seg2csv, seg2textgrid
-
+# from memory_profiler import profile
 def _media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg):
     sig = media2sig16kmono(medianame, tmpdir, start_sec, stop_sec, ffmpeg, 'float32')
     with warnings.catch_warnings():
@@ -156,10 +156,17 @@ class DnnSegmenter:
         for lab, start, stop in lseg:
             if lab == self.inlabel:
                 batch.append(patches[start:stop, :])
-
         if len(batch) > 0:
             batch = np.concatenate(batch)
-            rawpred = self.nn.predict(batch, batch_size=self.batch_size, verbose=2)
+            rawpred = []
+            for i in range(0, len(batch), self.batch_size):
+                b_i = batch[i:i+self.batch_size,:,:]
+                rawpred_i = self.nn(b_i, training=False)
+                
+                rawpred.append(rawpred_i)
+                
+            rawpred = np.concatenate(rawpred)
+        
         gc.collect()
             
         ret = []
@@ -293,7 +300,7 @@ class Segmenter:
         # do segmentation   
         return self.segment_feats(mspec, loge, difflen, start_sec)
 
-    
+    # @profile
     def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2., output_format='csv'):
         
         if verbose:
