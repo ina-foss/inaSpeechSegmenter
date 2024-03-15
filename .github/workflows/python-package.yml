@@ -2,7 +2,7 @@
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
 # currently (2023/02/08) : tensorflow is not supported with python > 3.11
-name: Python 3.7 to 3.10 unit tests
+name: Python 3.7 to 3.11 unit tests
 
 on:
   push:
