@@ -123,7 +123,6 @@ class DnnSegmenter:
     """
     def __init__(self, batch_size):
         # load the DNN model
-        url = 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/models/'
 
         model_path = get_remote(self.model_fname)
 
@@ -158,7 +157,7 @@ class DnnSegmenter:
                 batch.append(patches[start:stop, :])
 
         if len(batch) > 0:
-            batch = np.concatenate(batch)
+            batch = np.expand_dims(np.concatenate(batch), 3)
             rawpred = self.nn.predict(batch, batch_size=self.batch_size, verbose=2)
         gc.collect()
             
