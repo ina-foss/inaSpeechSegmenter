@@ -77,7 +77,9 @@ def _get_patches(mspec, w, step):
     h = mspec.shape[1]
     data = vaw(mspec, (w,h), step=step)
     data.shape = (len(data), w*h)
-    data = (data - np.mean(data, axis=1).reshape((len(data), 1))) / np.std(data, axis=1).reshape((len(data), 1))
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', message='invalid value encountered in subtract', category=RuntimeWarning)
+        data = (data - np.mean(data, axis=1).reshape((len(data), 1))) / np.std(data, axis=1).reshape((len(data), 1))
     lfill = [data[0,:].reshape(1, h*w)] * (w // (2 * step))
     rfill = [data[-1,:].reshape(1, h*w)] * (w // (2* step) - 1 + len(mspec) % 2)
     data = np.vstack(lfill + [data] + rfill )
