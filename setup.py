@@ -35,13 +35,16 @@ music-detection
 noise-detection
 speech-detection
 speech-music
-gender-equality
 gender-classification
+gender-representation
 speaker-gender
 speech
 music
 noise
+gender
 voice-activity-detection
+speech-activity-detection
+VAD
 praat'''.strip().split('\n')
 
 CLASSIFIERS=[
@@ -57,7 +60,8 @@ CLASSIFIERS=[
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10', 
-    'Programming Language :: Python :: 3.11',   
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
     'Topic :: Multimedia :: Sound/Audio',
     'Topic :: Multimedia :: Sound/Audio :: Analysis',
     'Topic :: Multimedia :: Sound/Audio :: Speech',

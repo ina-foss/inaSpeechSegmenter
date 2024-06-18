@@ -1,6 +1,6 @@
 # inaSpeechSegmenter
 [![Python](https://img.shields.io/pypi/pyversions/inaSpeechSegmenter.svg?style=plastic)](https://badge.fury.io/py/inaSpeechSegmenter)
-[![Python 3.7 to 3.11 unit tests](https://github.com/ina-foss/inaSpeechSegmenter/actions/workflows/python-package.yml/badge.svg)](https://github.com/ina-foss/inaSpeechSegmenter/actions/workflows/python-package.yml)
+[![Python 3.7 to 3.12 unit tests](https://github.com/ina-foss/inaSpeechSegmenter/actions/workflows/python-package.yml/badge.svg)](https://github.com/ina-foss/inaSpeechSegmenter/actions/workflows/python-package.yml)
 [![PyPI version](https://badge.fury.io/py/inaSpeechSegmenter.svg)](https://badge.fury.io/py/inaSpeechSegmenter)
 [![Docker Pulls](https://img.shields.io/docker/pulls/inafoss/inaspeechsegmenter)](https://hub.docker.com/r/inafoss/inaspeechsegmenter)
 
@@ -17,7 +17,7 @@ inaSpeechSegmenter has been designed in order to perform [large-scale gender equ
 
 ## Installation
 
-inaSpeechSegmenter works with Python 3.7 to Python 3.11. It is based on Tensorflow which does not yet support Python 3.12+.
+inaSpeechSegmenter works with Python 3.7 to Python 3.12. It is based on Tensorflow which does not yet support Python 3.13+.
 
 It is available on Python Package Index [inaSpeechSegmenter](https://pypi.org/project/inaSpeechSegmenter/) and packaged as a docker image [inafoss/inaspeechsegmenter](https://hub.docker.com/r/inafoss/inaspeechsegmenter).
 
@@ -57,40 +57,14 @@ $ python setup.py test
 
 ## Using inaSpeechSegmenter
 
-### Speech Segmentation Program
-Binary program ina_speech_segmenter.py may be used to segment multimedia archives encoded in any format supported by ffmpeg. It requires input media and output csv files corresponding to the segmentation. Corresponding csv may be visualised using softwares such as https://www.sonicvisualiser.org/
+### Command-Line Interface
+Binary program ina_speech_segmenter.py may be used to segment multimedia archives encoded in any format supported by ffmpeg. It requires input media and provide 2 segmentation output formats : csv (can be displayed with [Sonic Visualiser](https://www.sonicvisualiser.org) and TextGrid ([Praat](https://www.fon.hum.uva.nl/praat/) format). Detailed command line options can be obtained using the following command :
 ```bash
 # get help
 $ ina_speech_segmenter.py --help
-usage: ina_speech_segmenter.py [-h] -i INPUT [INPUT ...] -o OUTPUT_DIRECTORY [-d {sm,smn}] [-g {true,false}] [-b FFMPEG_BINARY] [-e {csv,textgrid}]
-
-Do Speech/Music(/Noise) and Male/Female segmentation and store segmentations into CSV files. Segments labelled 'noEnergy' are discarded from music, noise, speech and gender
-analysis. 'speech', 'male' and 'female' labels include speech over music and speech over noise. 'music' and 'noise' labels are pure segments that are not supposed to contain speech.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -i INPUT [INPUT ...], --input INPUT [INPUT ...]
-                        Input media to analyse. May be a full path to a media (/home/david/test.mp3), a list of full paths (/home/david/test.mp3 /tmp/mymedia.avi), a regex input
-                        pattern ("/home/david/myaudiobooks/*.mp3"), an url with http protocol (http://url_of_the_file)
-  -o OUTPUT_DIRECTORY, --output_directory OUTPUT_DIRECTORY
-                        Directory used to store segmentations. Resulting segmentations have same base name as the corresponding input media, with csv extension. Ex: mymedia.MPG will
-                        result in mymedia.csv
-  -d {sm,smn}, --vad_engine {sm,smn}
-                        Voice activity detection (VAD) engine to be used (default: 'smn'). 'smn' split signal into 'speech', 'music' and 'noise' (better). 'sm' split signal into
-                        'speech' and 'music' and do not take noise into account, which is either classified as music or speech. Results presented in ICASSP were obtained using 'sm'
-                        option
-  -g {true,false}, --detect_gender {true,false}
-                        (default: 'true'). If set to 'true', segments detected as speech will be splitted into 'male' and 'female' segments. If set to 'false', segments
-                        corresponding to speech will be labelled as 'speech' (faster)
-  -b FFMPEG_BINARY, --ffmpeg_binary FFMPEG_BINARY
-                        Your custom binary of ffmpeg
-  -e {csv,textgrid}, --export_format {csv,textgrid}
-                        (default: 'csv'). If set to 'csv', result will be exported in csv. If set to 'textgrid', results will be exported to praat Textgrid
-
-Detailled description of this framework is presented in the following study: Doukhan, D., Carrive, J., Vallet, F., Larcher, A., & Meignier, S. (2018, April). An open-source speaker
-gender detection framework for monitoring gender equality. In 2018 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP) (pp. 5214-5218). IEEE.
 ```
-### Using Speech Segmentation API
+
+### Application Programming Interface
 
 InaSpeechSegmentation API is intended to be very simple to use, and is illustrated by these 2 notebooks :
 * [Google colab tutorial](https://colab.research.google.com/github/ina-foss/inaSpeechSegmenter/blob/master/tutorials/Demo_INASPeechSegmenter.ipynb): use API online
@@ -141,12 +115,11 @@ Details on the speech detection submodule can be found bellow:
 
 This work has been partially funded by the French National Research Agency (project GEM : Gender Equality Monitor : ANR-19-CE38-0012) and by European Union's Horizon 2020 research and innovation programme (project [MeMAD](https://memad.eu) : H2020 grant agreement No 780069).
 
-Some optimization within inaSpeechSegmenter code were realized by Cyril Lashkevich
-https://github.com/notorca
-
 The code used to extract mel bands features is copy-pasted from sidekit project:
 https://git-lium.univ-lemans.fr/Larcher/sidekit
 
 Relevant contributions to the project were done by:
-* Eliott Lechapt : https://github.com/elechapt
-* Rémi Uro : https://github.com/r-uro
+* [Eliott Lechapt](https://github.com/elechapt)
+* [Cyril Lashkevich](https://github.com/notorca)
+* [Rémi Uro](https://github.com/r-uro)
+* [Simon Devauchelle](https://github.com/simonD3V)
