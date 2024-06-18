@@ -14,13 +14,13 @@ Zones corresponding to speech over music or speech over noise are tagged as spee
 
 
 ## Highlights
-* [2024] :star2: relationship between manual and automatic women representation descriptors are investigated in a [study presented in Interspeech 2024](https://arxiv.org/abs/2406.10316)
-* [2024] :trophy: ranked #1 against 6 open-source VAD system on a [French TV and radio benchmark](https://aclanthology.org/2024.lrec-main.785/) presented at LREC-Coling 2024
-* [2023] :transgender_symbol: New Feature [presented at Interspeech 2023](https://doi.org/10.21437/Interspeech.2023-1835) : a Non-Binary Voice Gender Prediction System for evaluating Transgender voice transition
-* [2020] :sunglasses: inaSpeechSegmenter is used in anual [French Audivisual Regulation Authority report](https://www.csa.fr/content/download/258234/762460/version/5/file/Rapport%20DDF%202019.pdf) on women representation in TV and radio!
-* [2018] :female_sign::male_sign: inaSpeechSegmenter has been used to perform [large-scale (700k+ hours) gender representation studies in French TV and radio](http://doi.org/10.18146/2213-0969.2018.jethc156) based on men and women speech-time percentage estimation.
-* [2018] :partying_face: inaSpeechSegmenter won [MIREX 2018 speech detection challenge](http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results).
-* [2018] :rocket: inaSpeechSegmenter has been presented at the [IEEE ICASSP 2018 conference](https://web.archive.org/web/20200510120139id_/https://hal.archives-ouvertes.fr/hal-01927560/file/ddoukhan_icassp_2018.pdf) in Calgary, Canada
+* :star2: Relationship between manual and automatic women representation descriptors are investigated in a [study presented in Interspeech 2024](https://arxiv.org/abs/2406.10316)
+* :trophy: ranked #1 against 6 open-source VAD system on a [French TV and radio benchmark](https://aclanthology.org/2024.lrec-main.785/) presented at LREC-Coling 2024
+* :transgender_flag: New Feature [presented at Interspeech 2023](https://doi.org/10.21437/Interspeech.2023-1835) : a Non-Binary Voice Gender Prediction System for evaluating Transgender voice transition
+* :sunglasses: Since 2020, inaSpeechSegmenter is used in anual [French Audivisual Regulation Authority report](https://www.csa.fr/content/download/258234/762460/version/5/file/Rapport%20DDF%202019.pdf) on women representation in TV and radio!
+* :female_sign::male_sign: inaSpeechSegmenter has been used to perform [large-scale (700k+ hours) gender representation studies in French TV and radio](http://doi.org/10.18146/2213-0969.2018.jethc156) based on men and women speech-time percentage estimation.
+* :partying_face: inaSpeechSegmenter won [MIREX 2018 speech detection challenge](http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results).
+* :rocket: inaSpeechSegmenter has been presented at [ICASSP 2018](https://web.archive.org/web/20200510120139id_/https://hal.archives-ouvertes.fr/hal-01927560/file/ddoukhan_icassp_2018.pdf)
 
 ## Installation
 
