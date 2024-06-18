@@ -15,6 +15,9 @@ Zones corresponding to speech over music or speech over noise are tagged as spee
 
 inaSpeechSegmenter has been designed in order to perform [large-scale gender equality studies](http://doi.org/10.18146/2213-0969.2018.jethc156) based on men and women speech-time percentage estimation.
 
+## Highlights
+* [2018] : inaSpeechSegmenter won [MIREX 2018 speech detection challenge](http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results).
+
 ## Installation
 
 inaSpeechSegmenter works with Python 3.7 to Python 3.12. It is based on Tensorflow which does not yet support Python 3.13+.
@@ -58,7 +61,7 @@ $ python setup.py test
 ## Using inaSpeechSegmenter
 
 ### Command-Line Interface
-Binary program ina_speech_segmenter.py may be used to segment multimedia archives encoded in any format supported by ffmpeg. It requires input media and provide 2 segmentation output formats : csv (can be displayed with [Sonic Visualiser](https://www.sonicvisualiser.org) and TextGrid ([Praat](https://www.fon.hum.uva.nl/praat/) format). Detailed command line options can be obtained using the following command :
+Binary program ina_speech_segmenter.py may be used to segment multimedia archives encoded in any format supported by ffmpeg. It requires input media and provide 2 segmentation output formats : csv (can be displayed with [Sonic Visualiser](https://www.sonicvisualiser.org)) and TextGrid ([Praat](https://www.fon.hum.uva.nl/praat/) format). Detailed command line options can be obtained using the following command :
 ```bash
 # get help
 $ ina_speech_segmenter.py --help
