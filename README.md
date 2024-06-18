@@ -15,12 +15,12 @@ Zones corresponding to speech over music or speech over noise are tagged as spee
 
 ## Highlights
 * :trophy: ranked #1 against 6 open-source VAD system on a [French TV and radio benchmark](https://aclanthology.org/2024.lrec-main.785/)
-* :star2: Used to investigate the relationship between manual and automatic women representation descriptors [in French TV and radio](https://arxiv.org/abs/2406.10316)
 * :transgender_flag: Extended as a non-binary Voice Gender Prediction system for [evaluating Transgender voice transition](https://doi.org/10.21437/Interspeech.2023-1835)
 * :sunglasses: Used since 2020 in the annual [French Audivisual Regulation Authority report](https://www.arcom.fr/nos-ressources/etudes-et-donnees/mediatheque/la-representation-des-femmes-la-television-et-la-radio-rapport-sur-lexercice-2023) on women representation in TV and radio!
-* :female_sign::male_sign: Applied for [large-scale gender representation studies](http://doi.org/10.18146/2213-0969.2018.jethc156) in French TV and radio.
-* :partying_face: Won the [MIREX 2018 speech detection challenge](http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results).
-* :rocket: Presented at [ICASSP 2018](https://web.archive.org/web/20200510120139id_/https://hal.archives-ouvertes.fr/hal-01927560/file/ddoukhan_icassp_2018.pdf)
+* :star2: Used to investigate the relationship between manual and automatic women representation descriptors [in French TV and radio](https://arxiv.org/abs/2406.10316)
+* :female_sign: :male_sign: Applied for [large-scale gender representation studies](http://doi.org/10.18146/2213-0969.2018.jethc156) in French TV and radio.
+* :partying_face: Won [MIREX 2018 speech detection challenge](http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results).
+
 
 ## Installation
 
