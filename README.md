@@ -10,7 +10,8 @@ inaSpeechSegmenter is a CNN-based audio segmentation toolkit suited to the tasks
 It splits audio signals into homogeneous zones of speech, music and noise.
 Speech zones are split into segments tagged using speaker gender (male or female).
 Male and female classification models are optimized for French language since they were trained using French speakers (accoustic correlates of speaker gender are language dependent).
-Zones corresponding to speech over music or speech over noise are tagged as speech. 
+Zones corresponding to speech over music or speech over noise are tagged as speech.
+Singing voice is tagged as music.
 
 
 ## Highlights
