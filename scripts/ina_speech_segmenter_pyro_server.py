@@ -47,7 +47,7 @@ class GenderJobServer(object):
         self.lsource = list(df.source_path)
         self.ldest = list(df.dest_path)
         self.i = 0
-        return '%s jobs have been set' % csvjobs.name
+        return '%s jobs have been set' % csvjobs
         
     def get_job(self, msg):
         print('job %d: %s' % (self.i, msg))
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     Pyro4.config.HOST = args.host
 
     with Pyro4.Daemon() as daemon:
-        server = GenderJobServer(args.csvjobs)
+        server = GenderJobServer(args.csvjobs.name)
         uri = daemon.register(server)   # register the greeting maker as a Pyro object\n",
         print("Ready. Object uri =", uri)
 
