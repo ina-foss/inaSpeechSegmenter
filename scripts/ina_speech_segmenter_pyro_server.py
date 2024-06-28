@@ -65,7 +65,7 @@ class GenderJobServer(object):
         return ret
 
     def has_more_jobs(self):
-        return len(self.lsource) > 0 and len(self.ldest) > 0
+        return len(self.lsource) > 0 or len(self.ldest) > 0
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
