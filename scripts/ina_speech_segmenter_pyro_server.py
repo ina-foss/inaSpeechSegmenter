@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # encoding: utf-8
 
 # The MIT License
@@ -28,6 +28,7 @@ import Pyro4
 import numpy as np
 import pandas as pd
 
+import argparse
 
 @Pyro4.expose
 class GenderJobServer(object):
@@ -46,7 +47,7 @@ class GenderJobServer(object):
         self.lsource = list(df.source_path)
         self.ldest = list(df.dest_path)
         self.i = 0
-        return '%s jobs have been set' % csvjobs
+        return '%s jobs have been set' % csvjobs.name
         
     def get_job(self, msg):
         print('job %d: %s' % (self.i, msg))
@@ -63,14 +64,39 @@ class GenderJobServer(object):
         self.i += nbjobs
         return ret
 
-
+    def has_more_jobs(self):
+        return len(self.lsource) > 0 and len(self.ldest) > 0
 
 if __name__ == '__main__':
-    # full name of the host to be used by remote clients
-    Pyro4.config.HOST = sys.argv[1]    
-    
-    daemon = Pyro4.Daemon()                # make a Pyro daemon\n",
-    uri = daemon.register(GenderJobServer(sys.argv[2]))   # register the greeting maker as a Pyro object\n",
-    print("Ready. Object uri =", uri)
-    daemon.requestLoop()
+    parser = argparse.ArgumentParser(
+        description='Start the inaSpeechSegmenter server.'
+    )
+    parser.add_argument(
+        'host', type=str,
+        help='Host/IP to use for the server.'
+    )
+    parser.add_argument(
+        'csvjobs', type=argparse.FileType('r'),
+        help='CSV file containing the list of jobs to process. ' \
+        'Required columns: source_path, dest_path'
+    )
+    parser.add_argument(
+        '--stop_after_dispatch', action='store_true',
+        help='If set, will stop the server when all jobs have been dispatched' \
+        ' to clients.'
+    )
+    args = parser.parse_args()
 
+    Pyro4.config.HOST = args.host
+
+    with Pyro4.Daemon() as daemon:
+        server = GenderJobServer(args.csvjobs)
+        uri = daemon.register(server)   # register the greeting maker as a Pyro object\n",
+        print("Ready. Object uri =", uri)
+
+        if args.stop_after_dispatch:
+            daemon.requestLoop(server.has_more_jobs)
+        else:
+            daemon.requestLoop()
+
+    print("Done.")
