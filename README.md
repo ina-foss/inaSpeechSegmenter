@@ -133,3 +133,4 @@ Relevant contributions to the project were done by:
 * [Cyril Lashkevich](https://github.com/notorca)
 * [Rémi Uro](https://github.com/r-uro)
 * [Simon Devauchelle](https://github.com/simonD3V)
+* [Valentin Pelloin](https://github.com/valentinp72)

@@ -65,7 +65,7 @@ class GenderJobServer(object):
         return ret
 
     def has_more_jobs(self):
-        return len(self.lsource) > 0 or len(self.ldest) > 0
+        return len(self.lsource) > 0
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         'host', type=str,
-        help='Host/IP to use for the server.'
+        help='Server hostname or IP to be communicated to remote clients so they can correctly identify and connect to the server.'
     )
     parser.add_argument(
         'csvjobs', type=argparse.FileType('r'),
