@@ -1,6 +1,9 @@
 Please fill out this template for a bug report.
 
-Make sure you ran the unit tests before submitting an issue and tell us if and where they fail.
+1.  **Unit Tests** Ensure that you have run the unit tests before submitting your issue. Please indicate if any tests fail and specify where they fail.
+2. **Training Source Code and Data** Please note that requests for training source code and training data cannot be fulfilled. The effort required to clean the training code is significant, and the training dataset is considered a private resource.
+
+Thank you for your understanding.
 
 
 <!--- Provide a general summary of the issue in the Title above -->
