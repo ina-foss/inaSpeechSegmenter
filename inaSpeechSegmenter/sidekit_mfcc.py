@@ -254,11 +254,11 @@ def framing(sig, win_size, win_shift=1, context=(0, 0), pad='zeros'):
     shape = (int((sig.shape[0] - win_size) / win_shift) + 1, 1, _win_size, sig.shape[1])
     strides = tuple(map(lambda x: x * dsize, [win_shift * sig.shape[1], 1, sig.shape[1], 1]))
     if pad == 'zeros':
-        return numpy.lib.stride_tricks.as_strided(numpy.lib.pad(sig, c, 'constant', constant_values=(0,)),
+        return numpy.lib.stride_tricks.as_strided(numpy.pad(sig, c, 'constant', constant_values=(0,)),
                                                   shape=shape,
                                                   strides=strides).squeeze()
     elif pad == 'edge':
-        return numpy.lib.stride_tricks.as_strided(numpy.lib.pad(sig, c, 'edge'),
+        return numpy.lib.stride_tricks.as_strided(numpy.pad(sig, c, 'edge'),
                                                   shape=shape,
                                                   strides=strides).squeeze()
 
