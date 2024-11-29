@@ -224,9 +224,10 @@ class Segmenter:
                 default value (32) is slow, but works on any hardware
         """      
 
-        # test ffmpeg installation
-        if shutil.which(ffmpeg) is None:
-            raise(Exception("""ffmpeg program not found"""))
+        if ffmpeg is not None:
+            # test ffmpeg installation
+            if shutil.which(ffmpeg) is None:
+                raise(Exception("""ffmpeg program not found"""))
         self.ffmpeg = ffmpeg
 
         # set energic ratio for 1st VAD

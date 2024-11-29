@@ -34,6 +34,20 @@ def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmp
     Convert media to temp wav 16k mono and return signal
     """
 
+    if ffmpeg is None:
+        if start_sec is not None or stop_sec is not None:
+            raise NotImplementedError(
+                f'{start_sec=} and {stop_sec=} cannot be set when running ' \
+                f'inaSpeechSegmenter without ffmpeg. Please cut down your ' \
+                f'audio files beforehand or use ffmpeg.'
+            )
+
+        sig, sr = sf.read(medianame, dtype=dtype)
+        assert sr == 16_000, \
+            f'Without ffmpeg, inaSpeechSegmenter can only take files sampled ' \
+            f'at 16000 Hz. The file {medianame} is sampled at {sr}.'
+        return sig
+
     base, _ = os.path.splitext(os.path.basename(medianame))
 
     with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:

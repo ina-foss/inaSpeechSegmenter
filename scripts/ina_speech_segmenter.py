@@ -48,11 +48,15 @@ parser.add_argument('-o', '--output_directory', help='Directory used to store se
 parser.add_argument('-s', '--batch_size', type=int, default=32, help="(default: 32 - we recommend 1024). Size of batches to be sent to the GPU. Larger values allow faster processings, but require GPU with more memories. Default 32 size is fine even with a baseline laptop GPU.")
 parser.add_argument('-d', '--vad_engine', choices=['sm', 'smn'], default='smn', help="Voice activity detection (VAD) engine to be used (default: 'smn'). 'smn' split signal into 'speech', 'music' and 'noise' (better). 'sm' split signal into 'speech' and 'music' and do not take noise into account, which is either classified as music or speech. Results presented in ICASSP were obtained using 'sm' option")
 parser.add_argument('-g', '--detect_gender', choices = ['true', 'false'], default='True', help="(default: 'true'). If set to 'true', segments detected as speech will be splitted into 'male' and 'female' segments. If set to 'false', segments corresponding to speech will be labelled as 'speech' (faster)")
-parser.add_argument('-b', '--ffmpeg_binary', default='ffmpeg', help='Your custom binary of ffmpeg', required=False)
+parser.add_argument('-b', '--ffmpeg_binary', default='ffmpeg', help='Your custom binary of ffmpeg. Set `None` to disable ffmpeg.', required=False)
 parser.add_argument('-e', '--export_format', choices = ['csv', 'textgrid'], default='csv', help="(default: 'csv'). If set to 'csv', result will be exported in csv. If set to 'textgrid', results will be exported to praat Textgrid")
 parser.add_argument('-r', '--energy_ratio', default=0.03, type=float, help="(default: 0.03). Energetic threshold used to detect activity (percentage of mean energy of the signal)")
 
 args = parser.parse_args()
+
+if args.ffmpeg_binary.lower() == "none" or args.ffmpeg_binary == "":
+    print("Disabling ffmpeg. Make sure your audio files are already sampled at 16kHz.")
+    args.ffmpeg_binary = None
 
 # Preprocess arguments and check their consistency
 input_files = []

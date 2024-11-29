@@ -25,33 +25,51 @@
 
 
 import Pyro4
-import sys
 import os
 import socket
 
+import argparse
 from inaSpeechSegmenter import Segmenter
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Start a inaSpeechSegmenter Pyro client.'
+    )
+    parser.add_argument(
+        'uri', type=str, required=True,
+        help='URI of the Pyro server to connect and get jobs from.'
+    )
+    parser.add_argument(
+        '--batch_size', type=int, default=1024,
+        help='Batch size to use. Use lower values with small GPUs.'
+    )
+    parser.add_argument(
+        '--ffmpeg_binary', default='ffmpeg', type=str,
+        help='Your custom binary of ffmpeg. Set `None` to disable ffmpeg.'
+    )
+    args = parser.parse_args()
+
+    if args.ffmpeg_binary.lower() == "none" or args.ffmpeg_binary == "":
+        print("Disabling ffmpeg. Make sure your audio files are already sampled at 16kHz.")
+        args.ffmpeg_binary = None
+
     dname = os.path.dirname(os.path.realpath(__file__))
-
     hostname = socket.gethostname()
-
-    uri = sys.argv[1]
-    jobserver = Pyro4.Proxy(uri)
+    jobserver = Pyro4.Proxy(args.uri)
 
     ret = -1
     outname = 'init'
-    
+
     # batch size set at 1024. Use lower values with small gpus
-    g = Segmenter(batch_size=1024)
-    
+    g = Segmenter(batch_size=args.batch_size, ffmpeg=args.ffmpeg_binary)
+
     while True:
         lsrc, ldst = jobserver.get_njobs('%s %s' % (hostname, ret))
-            
+
         print(lsrc, ldst)
         if len(lsrc) == 0:
             print('job list finished')
             break
-        
-        ret =  g.batch_process(lsrc, ldst, skipifexist=True, nbtry=3)
+
+        ret = g.batch_process(lsrc, ldst, skipifexist=True, nbtry=3)
