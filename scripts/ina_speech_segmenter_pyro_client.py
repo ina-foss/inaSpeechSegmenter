@@ -29,15 +29,13 @@ import os
 import socket
 
 import argparse
-from inaSpeechSegmenter import Segmenter
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Start a inaSpeechSegmenter Pyro client.'
     )
     parser.add_argument(
-        'uri', type=str, required=True,
+        'uri', type=str,
         help='URI of the Pyro server to connect and get jobs from.'
     )
     parser.add_argument(
@@ -62,6 +60,7 @@ if __name__ == '__main__':
     outname = 'init'
 
     # batch size set at 1024. Use lower values with small gpus
+    from inaSpeechSegmenter import Segmenter
     g = Segmenter(batch_size=args.batch_size, ffmpeg=args.ffmpeg_binary)
 
     while True:

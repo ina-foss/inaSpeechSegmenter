@@ -41,11 +41,17 @@ def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmp
                 f'inaSpeechSegmenter without ffmpeg. Please cut down your ' \
                 f'audio files beforehand or use ffmpeg.'
             )
+        if medianame.startswith('http://') or medianame.startswith('https://'):
+            raise NotImplementedError(
+                f'Without ffmpeg you cannot process media content on http ' \
+                f'servers. You need to download your audio files beforehand ' \
+                f'or use ffmpeg. You gave {medianame=}.'
+            )
 
         sig, sr = sf.read(medianame, dtype=dtype)
         assert sr == 16_000, \
             f'Without ffmpeg, inaSpeechSegmenter can only take files sampled ' \
-            f'at 16000 Hz. The file {medianame} is sampled at {sr}.'
+            f'at 16000 Hz. The file {medianame} is sampled at {sr} Hz.'
         return sig
 
     base, _ = os.path.splitext(os.path.basename(medianame))
