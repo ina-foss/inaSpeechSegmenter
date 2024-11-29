@@ -79,9 +79,25 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             self.assertEqual(curstop, nextstart,
                              '%s VS %s' % (seg2str(i, ret[i]), seg2str(i+1, ret[i+1])))
 
+        seg = Segmenter(ffmpeg=None)
+        ret = seg('./media/musanmix.wav')
+        for i in range(len(ret) -1):
+            curstop = ret[i][2]
+            nextstart = ret[i+1][1]
+            self.assertEqual(curstop, nextstart,
+                             '%s VS %s' % (seg2str(i, ret[i]), seg2str(i+1, ret[i+1])))
+
     def test_processingresult(self):
         seg = Segmenter(vad_engine='sm')
         ret = seg('./media/musanmix.mp3')
+        df = pd.read_csv('./media/musanmix-sm-gender.csv', sep='\t')
+        ref = [(l.labels, float(l.start), float(l.stop)) for _, l in df.iterrows()]
+        self.assertEqual([e[0] for e in ref], [e[0] for e in ret])
+        np.testing.assert_almost_equal([e[1] for e in ref], [e[1] for e in ret])
+        np.testing.assert_almost_equal([e[2] for e in ref], [e[2] for e in ret])
+
+        seg = Segmenter(vad_engine='sm', ffmpeg=None)
+        ret = seg('./media/musanmix.wav')
         df = pd.read_csv('./media/musanmix-sm-gender.csv', sep='\t')
         ref = [(l.labels, float(l.start), float(l.stop)) for _, l in df.iterrows()]
         self.assertEqual([e[0] for e in ref], [e[0] for e in ret])
@@ -96,6 +112,12 @@ class TestInaSpeechSegmenter(unittest.TestCase):
             self.assertTrue(filecmp.cmp(lout[0], lout[1]))
             self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-sm-gender.csv'))
 
+        seg = Segmenter(vad_engine='sm', ffmpeg=None)
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            lout = [os.path.join(tmpdirname, '1.1.csv'), os.path.join(tmpdirname, '2.1.csv')]
+            ret = seg.batch_process(['./media/musanmix.wav', './media/musanmix.wav'], lout)
+            self.assertTrue(filecmp.cmp(lout[0], lout[1]))
+            self.assertTrue(filecmp.cmp(lout[0], './media/musanmix-sm-gender.csv'))
   
     def test_praat_export(self):
         seg = Segmenter()
