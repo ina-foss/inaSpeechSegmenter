@@ -34,6 +34,26 @@ def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmp
     Convert media to temp wav 16k mono and return signal
     """
 
+    if ffmpeg is None:
+        if start_sec is not None or stop_sec is not None:
+            raise NotImplementedError(
+                f'start_sec={start_sec} and stop_sec={stop_sec} cannot be set ' \
+                f' when running inaSpeechSegmenter without ffmpeg. Please cut '\
+                f'down your audio files beforehand or use ffmpeg.'
+            )
+        if medianame.startswith('http://') or medianame.startswith('https://'):
+            raise NotImplementedError(
+                f'Without ffmpeg you cannot process media content on http ' \
+                f'servers. You need to download your audio files beforehand ' \
+                f'or use ffmpeg. You gave medianame={medianame}.'
+            )
+
+        sig, sr = sf.read(medianame, dtype=dtype)
+        assert sr == 16_000, \
+            f'Without ffmpeg, inaSpeechSegmenter can only take files sampled ' \
+            f'at 16000 Hz. The file {medianame} is sampled at {sr} Hz.'
+        return sig
+
     base, _ = os.path.splitext(os.path.basename(medianame))
 
     with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
@@ -58,3 +78,4 @@ def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmp
         sig, sr = sf.read(tmpwav, dtype=dtype)
         assert sr == 16000
         return sig
+
