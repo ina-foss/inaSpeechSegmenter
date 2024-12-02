@@ -37,15 +37,15 @@ def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmp
     if ffmpeg is None:
         if start_sec is not None or stop_sec is not None:
             raise NotImplementedError(
-                f'{start_sec=} and {stop_sec=} cannot be set when running ' \
-                f'inaSpeechSegmenter without ffmpeg. Please cut down your ' \
-                f'audio files beforehand or use ffmpeg.'
+                f'start_sec={start_sec} and stop_sec={stop_sec} cannot be set ' \
+                f' when running inaSpeechSegmenter without ffmpeg. Please cut '\
+                f'down your audio files beforehand or use ffmpeg.'
             )
         if medianame.startswith('http://') or medianame.startswith('https://'):
             raise NotImplementedError(
                 f'Without ffmpeg you cannot process media content on http ' \
                 f'servers. You need to download your audio files beforehand ' \
-                f'or use ffmpeg. You gave {medianame=}.'
+                f'or use ffmpeg. You gave medianame={medianame}.'
             )
 
         sig, sr = sf.read(medianame, dtype=dtype)
