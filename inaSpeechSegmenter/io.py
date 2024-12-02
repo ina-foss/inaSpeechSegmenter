@@ -78,3 +78,4 @@ def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmp
         sig, sr = sf.read(tmpwav, dtype=dtype)
         assert sr == 16000
         return sig
+
