@@ -25,6 +25,9 @@
 
 
 import os
+import platform
+import sys
+
 from setuptools import setup, find_packages
 import versioneer
 
@@ -104,6 +107,32 @@ Details on the speech detection submodule can be found bellow:
 ```
 '''
 
+platform_dependent_packages = []
+
+if sys.platform == 'darwin':
+  platform_dependent_packages.append('tensorflow')
+
+  if platform.machine() == 'arm64':
+    platform_dependent_packages.append('onnxruntime-silicon')
+  else:
+    platform_dependent_packages.append('onnxruntime')
+else:
+  platform_dependent_packages.append('tensorflow[and-cuda]')
+  platform_dependent_packages.append('onnxruntime-gpu')
+
+requirements = [
+  'numpy',
+  'pandas',
+  'scikit-image',
+  'pyannote.core',
+  'matplotlib',
+  'Pyro4',
+  'pytextgrid',
+  'soundfile',
+  *platform_dependent_packages,
+  #'torch',
+]
+
 setup(
     name = "inaSpeechSegmenter",
     version = versioneer.get_version(),
@@ -113,7 +142,7 @@ setup(
     test_suite="run_test.py",
     description = DESCRIPTION,
     license = "MIT",
-    install_requires=['tensorflow[and-cuda]', 'numpy', 'pandas', 'scikit-image', 'pyannote.core', 'matplotlib', 'Pyro4', 'pytextgrid', 'soundfile', 'onnxruntime-gpu'], #'torch'
+    install_requires=requirements,
  #   keywords = "example documentation tutorial",
     url = "https://github.com/ina-foss/inaSpeechSegmenter",
 #    packages=['inaSpeechSegmenter'],
