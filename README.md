@@ -9,7 +9,7 @@ inaSpeechSegmenter is a CNN-based audio segmentation toolkit suited to the tasks
 
 It splits audio signals into homogeneous zones of speech, music and noise.
 Speech zones are split into segments tagged using speaker gender (male or female).
-Male and female classification models are optimized for French language since they were trained using French speakers (accoustic correlates of speaker gender are language dependent).
+Male and female classification models are optimized for French language since they were trained using French speakers (acoustic correlates of speaker gender are language dependent).
 Zones corresponding to speech over music or speech over noise are tagged as speech.
 Singing voice is tagged as music.
 
@@ -40,7 +40,7 @@ $ sudo apt-get install ffmpeg
 
 ### PIP installation
 ```bash
-# create a python 3 virtual environement and activate it
+# create a python 3 virtual environment and activate it
 $ virtualenv -p python3 env
 $ source env/bin/activate
 # install framework and dependencies
@@ -52,7 +52,7 @@ $ pip install inaSpeechSegmenter
 ```bash
 # clone git repository
 $ git clone https://github.com/ina-foss/inaSpeechSegmenter.git
-# create a python 3 virtual environement and activate it
+# create a python 3 virtual environment and activate it
 $ virtualenv -p python3 env
 $ source env/bin/activate
 # install framework and dependencies
@@ -105,7 +105,7 @@ inaSpeechSegmenter has been presented at the IEEE International Conference on Ac
 ```
 
 inaSpeechSegmenter won [MIREX 2018 speech detection challenge](http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results)
-Details on the speech detection submodule can be found bellow:
+Details on the speech detection submodule can be found below:
 
 ```bibtex
 @inproceedings{ddoukhanmirex2018,
