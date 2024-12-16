@@ -314,8 +314,8 @@ def mfcc(input_sig,
         
             - Pre-processing in time-domain (pre-emphasizing)
             - Compute the spectrum amplitude by windowing with a Hamming window
-            - Filter the signal in the spectral domain with a triangular filter-bank, whose filters are approximatively
-               linearly spaced on the mel scale, and have equal bandwith in the mel scale
+            - Filter the signal in the spectral domain with a triangular filter-bank, whose filters are approximately
+               linearly spaced on the mel scale, and have equal bandwidth in the mel scale
             - Compute the DCT of the log-spectrom
             - Log-energy is returned as first coefficient of the feature vector.
     
