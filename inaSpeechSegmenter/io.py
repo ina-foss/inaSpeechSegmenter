@@ -23,6 +23,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+"""
+Media to 16k Mono Signal Converter
+----------------------------------
+This module provides functionality to convert various media files (e.g., audio or video)
+into a temporary WAV file with a sampling rate of 16 kHz and a single (mono) channel, and then returns
+the corresponding audio signal.
+
+Key features:
+- Uses ffmpeg to perform the conversion when available, allowing for optional trimming of the input
+  (via start_sec and stop_sec parameters).
+- Falls back to directly reading the file with soundfile if ffmpeg is not specified and the input
+  meets the required conditions (e.g., already sampled at 16 kHz).
+- Utilizes a temporary directory to store the intermediate WAV file, ensuring a clean conversion process.
+
+The primary function, media2sig16kmono, handles these operations and returns the processed signal.
+"""
+
 import os
 import tempfile
 from subprocess import Popen, PIPE
@@ -31,7 +48,12 @@ import soundfile as sf
 
 def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmpeg='ffmpeg', dtype='float64'):
     """
-    Convert media to temp wav 16k mono and return signal
+    Converts media to temporary WAV 16k mono and return signal.
+
+     Raises:
+    - NotImplementedError: If trimming is requested or an HTTP URL is provided without using ffmpeg.
+    - AssertionError: If the conversion fails or the audio file's sampling rate is not 16 kHz when ffmpeg is not used.
+    
     """
 
     if ffmpeg is None:
