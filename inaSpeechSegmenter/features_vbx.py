@@ -5,43 +5,72 @@
 # From VBHMM x-vectors Diarization (aka VBx)
 # Available on : https://github.com/BUTSpeechFIT/VBx/blob/master/VBx/features.py
 
+"""
+VBx Features Module
+-------------------
+This module implements a collection of functions for audio feature extraction and processing, 
+with functions essential  for preparing audio data for speech processing tasks 
+such as speaker diarization and recognition, as well as other audio analysis applications.
+
+It also encapsulates the core feature extraction procedures required for transforming raw audio
+signals into features suitable for speech analysis and speaker recognition pipelines.
+"""
+
+
 
 import numpy as np
 
 
 def framing(a, window, shift=1):
+    """Creates overlapping frames from an input array using numpy's stride tricks without copying data.
+    Each frame has a specified window length and shift, useful for efficient signal processing tasks."""
+    
     shape = ((a.shape[0] - window) // shift + 1, window) + a.shape[1:]
     strides = (a.strides[0]*shift, a.strides[0]) + a.strides[1:]
     return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
 
 # Mel and inverse Mel scale warping functions
+
+def mel(x):
+    # mel(x): Converts a linear frequency (in Hz) to the Mel scale, 
+    # which models human auditory perception by emphasizing frequencies that the ear is more sensitive to.
+    return 1127. * np.log(1. + x/700.)
+
 def mel_inv(x):
+    # mel_inv(x): Converts a Mel-scaled frequency back to a linear frequency (in Hz) 
+    # using the inverse logarithmic transformation.
     return (np.exp(x/1127.) - 1.) * 700.
 
 
-def mel(x):
-    return 1127. * np.log(1. + x/700.)
-
-
 def preemphasis(x, coef=0.97):
+    """
+    preemphasis(x, coef=0.97):
+    Applies a pre-emphasis filter (high-pass filter to amplify high-frequency components of a signal).
+    This is used to improve the signal-to-noise ratio.
+    Enhancing these components is crucial for effective speech feature extraction, such as in MFCC computation.
+    """
     return x - np.c_[x[..., :1], x[..., :-1]] * coef
 
 
 def mel_fbank_mx(winlen_nfft, fs, NUMCHANS=20, LOFREQ=0.0, HIFREQ=None, warp_fn=mel, inv_warp_fn=mel_inv, htk_bug=True):
-    """Returns mel filterbank as an array (NFFT/2+1 x NUMCHANS)
-    winlen_nfft - Typically the window length as used in mfcc_htk() call. It is
-                  used to determine number of samples for FFT computation (NFFT).
-                  If positive, the value (window lenght) is rounded up to the
-                  next higher power of two to obtain HTK-compatible NFFT.
-                  If negative, NFFT is set to -winlen_nfft. In such case, the
-                  parameter nfft in mfcc_htk() call should be set likewise.
-    fs          - sampling frequency (Hz, i.e. 1e7/SOURCERATE)
-    NUMCHANS    - number of filter bank bands
-    LOFREQ      - frequency (Hz) where the first filter starts
-    HIFREQ      - frequency (Hz) where the last filter ends (default fs/2)
-    warp_fn     - function for frequency warping and its inverse
-    inv_warp_fn - inverse function to warp_fn
+    """
+    mel_fbank_mx: Generates a Mel filterbank matrix as a 2D array with dimensions (NFFT/2+1 x NUMCHANS).
+    
+    A Mel filterbank is a collection of overlapping triangular filters that are applied to the power spectrum of a signal,
+    transforming it into a representation that aligns with human auditory perception. The filters emphasize frequency
+    bands that humans are more sensitive to (the Mel scale), making them a key component in speech processing tasks
+    such as MFCC (Mel Frequency Cepstral Coefficients) extraction.
+    
+    Parameters:
+    - winlen_nfft: Determines the FFT length (NFFT) for spectral analysis. If positive, it is rounded up to the next higher
+                   power of two (HTK-compatible). If negative, NFFT is set to the absolute value.
+    - fs: Sampling frequency in Hz.
+    - NUMCHANS: Number of filters (bands) in the filterbank.
+    - LOFREQ: Lower bound frequency (Hz) where the first filter starts.
+    - HIFREQ: Upper bound frequency (Hz) where the last filter ends (default is fs/2 if not specified).
+    - warp_fn: Function for converting linear frequencies to the Mel scale.
+    - inv_warp_fn: Inverse function to convert Mel frequencies back to linear scale.
     """
     HIFREQ = 0.5 * fs if not HIFREQ else HIFREQ
     nfft = 2**int(np.ceil(np.log2(winlen_nfft))) if winlen_nfft > 0 else -int(winlen_nfft)
@@ -62,33 +91,24 @@ def mel_fbank_mx(winlen_nfft, fs, NUMCHANS=20, LOFREQ=0.0, HIFREQ=None, warp_fn=
 def fbank_htk(x, window, noverlap, fbank_mx, nfft=None, _E=None,
               USEPOWER=False, RAWENERGY=True, PREEMCOEF=0.97, ZMEANSOURCE=False,
               ENORMALISE=True, ESCALE=0.1, SILFLOOR=50.0, USEHAMMING=True):
-    """Mel log Mel-filter bank channel outputs
-    Returns NUMCHANS-by-M matrix of log Mel-filter bank outputs extracted from
-    signal x, where M is the number of extracted frames, which can be computed
-    as floor((length(x)-noverlap)/(window-noverlap)). Remaining parameters
-    have the following meaning:
-    x         - input signal
-    window    - frame window length (in samples, i.e. WINDOWSIZE/SOURCERATE)
-                or vector of window weights override default windowing function
-                (see option USEHAMMING)
-    noverlap  - overlapping between frames (in samples, i.e window-TARGETRATE/SOURCERATE)
-    fbank_mx  - array with (Mel) filter bank (as returned by function mel_fbank_mx()).
-                Note that this must be compatible with the parameter 'nfft'.
-    nfft      - number of samples for FFT computation. By default, it is set in the
-                HTK-compatible way to the window length rounded up to the next higher
-                power of two.
-    _E        - include energy as the "first" or the "last" coefficient of each
-                feature vector. The possible values are: "first", "last", None.
-
-    Remaining options have exactly the same meaning as in HTK.
-
-    See also:
-      mel_fbank_mx:
-          to obtain the matrix for the parameter fbank_mx
-      add_deriv:
-          for adding delta, double delta, ... coefficients
-      add_dither:
-          for adding dithering in HTK-like fashion
+    """
+    fbank_htk: Computes log Mel-filter bank features from an input signal.
+    
+    This function processes an audio signal by framing it into overlapping windows, applying a window function,
+    performing an FFT, and then mapping the resulting power spectrum through a Mel filterbank (as provided by fbank_mx).
+    The output is a NUMCHANS-by-M matrix, where NUMCHANS is the number of filter bands and M is the number of frames
+    extracted from the signal. Optionally, the function can include the energy of each frame as an extra coefficient
+    (either at the beginning or the end of the feature vector), similar to the energy handling in HTK.
+    
+    Parameters:
+    - x: The input audio signal.
+    - window: The length (in samples) of each frame or a vector of window weights (overriding the default windowing function).
+    - noverlap: The number of overlapping samples between consecutive frames.
+    - fbank_mx: The Mel filterbank matrix (output of mel_fbank_mx), which must be compatible with the chosen FFT size.
+    - nfft: The number of FFT samples; if not specified, it defaults to the next power of two of the window length.
+    - _E: Option to include frame energy in the output ("first", "last", or None).
+    
+    Additional options follow HTK conventions, such as energy normalization and dithering, to facilitate robust feature extraction.
     """
     if type(USEPOWER) == bool:
         USEPOWER += 1
