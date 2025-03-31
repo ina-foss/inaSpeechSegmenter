@@ -51,8 +51,8 @@ def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmp
     Converts media to temporary WAV 16k mono and return signal.
 
      Raises:
-    - NotImplementedError: If trimming is requested or an HTTP URL is provided without using ffmpeg.
-    - AssertionError: If the conversion fails or the audio file's sampling rate is not 16 kHz when ffmpeg is not used.
+    - NotImplementedError: if trimming is requested or an HTTP URL is provided without using ffmpeg.
+    - AssertionError: if the conversion fails or the audio file's sampling rate is not 16 kHz when ffmpeg is not used.
     
     """
 
