@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-
-# Copyright Brno University of Technology (burget@fit.vutbr.cz)
-# Licensed under the Apache License, Version 2.0 (the "License")
-# From VBHMM x-vectors Diarization (aka VBx)
-# Available on : https://github.com/BUTSpeechFIT/VBx/blob/master/VBx/features.py
-
 """
 VBx Features Module
 -------------------
@@ -16,7 +9,12 @@ It also encapsulates the core feature extraction procedures required for transfo
 signals into features suitable for speech analysis and speaker recognition pipelines.
 """
 
+#!/usr/bin/env python
 
+# Copyright Brno University of Technology (burget@fit.vutbr.cz)
+# Licensed under the Apache License, Version 2.0 (the "License")
+# From VBHMM x-vectors Diarization (aka VBx)
+# Available on : https://github.com/BUTSpeechFIT/VBx/blob/master/VBx/features.py
 
 import numpy as np
 
