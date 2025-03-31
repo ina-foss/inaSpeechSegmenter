@@ -31,6 +31,28 @@
 # As long as this part is no more maintained, this file provides
 # updates for compatibility with numpy>=1.24
 
+"""
+Constrained Viterbi Decoding Module
+------------------------------------
+This module implements a constrained version of the Viterbi algorithm, which is used to decode the most probable 
+state sequence from a sequence of observations given emission, transition, and (optionally) initial probabilities. 
+
+Key features include:
+- Handling of minimum consecutive state constraints:certain states may be required to persist for a minimum number 
+  of consecutive frames. This is achieved by duplicating states and updating the transition, initial, emission, and 
+  constraint matrices accordingly.
+- Incorporation of state-level constraints: states can be forced (mandatory) or forbidden at specific time steps.
+- Log-domain probability computations: All probabilities (emission, transition, and initial) are handled in the log 
+  domain for numerical stability. A very low log-probability (LOG_ZERO) is used to represent near-zero probabilities.
+
+The main function, viterbi_decoding, performs the forward pass to compute the maximum likelihood of state sequences 
+and then uses backtracking to recover the optimal state path. It supports optional constraints on state durations and 
+forbidden/mandatory states, making it versatile for applications such as speech recognition, speaker diarization, or any 
+sequential decision-making tasks that require constrained decoding.
+
+This file has been updated for compatibility with numpy>=1.24 and is part of the pyannote core project.
+"""
+
 from __future__ import unicode_literals
 
 import numpy as np
@@ -43,12 +65,17 @@ VITERBI_CONSTRAINT_MANDATORY = 2
 
 LOG_ZERO = np.log(1e-200)
 
-# handling 'consecutive' constraints is achieved by duplicating states
-# the following functions are here to help in this process
+# Handling 'consecutive' constraints is achieved by duplicating states.
+# The following functions are here to help in this process.
 
-
-# create new transition prob. matrix accounting for duplicated states.
 def _update_transition(transition, consecutive):
+    """
+    Updates the transition matrix by duplicating states according to the consecutive constraints.
+    State duplication is used to enforce a minimum duration for each state by expanding the state space,
+    allowing the Viterbi algorithm to account for the requirement that a state must persist for a specified number
+    of consecutive frames. The function maps the original transition probabilities to the appropriate entries in
+    the duplicated transition matrix.
+    """
 
     # initialize with LOG_ZERO everywhere
     # except on the +1 diagonal np.log(1)
@@ -68,8 +95,12 @@ def _update_transition(transition, consecutive):
     return new_transition
 
 
-# create new initial prob. matrix accounting for duplicated states.
 def _update_initial(initial, consecutive):
+    """
+    Updates the initial probability vector to account for duplicated states based on consecutive constraints.
+    This function assigns the original initial probabilities to the first instance of each duplicated state group,
+    ensuring that the expanded state space reflects the required minimum duration for each state.
+    """
 
     new_n_states = np.sum(consecutive)
     new_initial = LOG_ZERO * np.ones((new_n_states, ))
@@ -84,24 +115,38 @@ def _update_initial(initial, consecutive):
     return new_initial
 
 
-# create new emission prob. matrix accounting for duplicated states.
 def _update_emission(emission, consecutive):
+    """
+    Updates the emission probability matrix to account for duplicated states based on consecutive constraints.
+    Each state's emission probabilities are duplicated 'c' times (where c is the required consecutive count) so that
+    each duplicated state inherits the same emission characteristics as the original state.
+    """
     
     return np.vstack(
         [np.tile(e, (c, 1))  # duplicate emission probabilities c times
         for e, c in zip(emission.T, consecutive)]).T
 
 
-# create new constraint matrix accounting for duplicated states
 def _update_constraint(constraint, consecutive):
+    """
+    Updates the constraint matrix to account for duplicated states based on consecutive constraints.
+    Although this function is implemented similarly to _update_emission (i.e., by duplicating each column 'c' times),
+    it differs in its purpose: while _update_emission duplicates the emission probabilities to expand the state space,
+    this function duplicates the constraint probabilities so that the enforced state constraints are correctly applied
+    to each instance of the expanded (duplicated) states.
+    """
     
     return np.vstack(
         [np.tile(e, (c, 1))  # duplicate constraint probabilities c times
         for e, c in zip(constraint.T, consecutive)]).T
 
 
-# convert sequence of duplicated states back to sequence of original states.
 def _update_states(states, consecutive):
+    """
+    Converts the expanded (duplicated) state indices from the Viterbi decoding back to the original state labels.
+    This mapping is essential after decoding in the expanded state space, where states were duplicated to enforce
+    minimum consecutive constraints, so that the final state sequence reflects the original state definitions.
+    """
 
     boundary = np.hstack(([0], np.cumsum(consecutive)))
     start = boundary[:-1]
