@@ -1,4 +1,3 @@
-'''
 """
 ResNet Implementation in PyTorch
 ---------------------------------
@@ -12,7 +11,7 @@ from input features.
 Reference:
 [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
     Deep Residual Learning for Image Recognition. arXiv:1512.03385
-'''
+"""
 
 import torch
 import torch.nn as nn
