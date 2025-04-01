@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of SIDEKIT.
-#
-# The following code has been copy-pasted from SIDEKIT source files:
-# frontend/features.py frontend/io.py frontend/vad.py
-#
-# SIDEKIT is a python package for speaker verification.
+# This file is part of SIDEKIT, a Python package for speaker verification.
 # Home page: http://www-lium.univ-lemans.fr/sidekit/
 #
-# SIDEKIT is a python package for speaker verification.
-# Home page: http://www-lium.univ-lemans.fr/sidekit/
-#    
+# The code in this file has been adapted from SIDEKIT source files (frontend/features.py, frontend/io.py, frontend/vad.py)
+# to provide core frontend functionality for processing audio signals. It includes methods for Mel-scale conversion,
+# filterbank construction, power spectrum analysis, framing, pre-emphasis filtering, and MFCC extraction.
+#
 # SIDEKIT is free software: you can redistribute it and/or modify
 # it under the terms of the GNU LLesser General Public License as 
 # published by the Free Software Foundation, either version 3 of the License, 
@@ -23,6 +19,8 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with SIDEKIT.  If not, see <http://www.gnu.org/licenses/>.
+
+
 
 """
 Copyright 2014-2021 Anthony Larcher and Sylvain Meignier
@@ -52,11 +50,15 @@ __docformat__ = 'reStructuredText'
 PARAM_TYPE = numpy.float32
 
 def hz2mel(f, htk=True):
-    """Convert an array of frequency in Hz into mel.
-    
-    :param f: frequency to convert
-    
-    :return: the equivalence on the mel scale.
+    """
+    Convert frequencies from Hertz (Hz) to the Mel scale.
+
+    Parameters:
+        f (array-like): a frequency or an array of frequencies in Hz.
+        htk (bool): if True, use the HTK formula; otherwise, use the formula that matches Slaney's Auditory Toolbox.
+
+    Returns:
+        numpy.ndarray or float: The corresponding value(s) on the Mel scale.
     """
     if htk:
         return 2595 * numpy.log10(1 + f / 700.)
@@ -116,17 +118,27 @@ def mel2hz(z, htk=True):
 
 
 def trfbank(fs, nfft, lowfreq, maxfreq, nlinfilt, nlogfilt, midfreq=1000):
-    """Compute triangular filterbank for cepstral coefficient computation.
+    """
+    Compute a triangular filterbank for cepstral coefficient extraction.
 
-    :param fs: sampling frequency of the original signal.
-    :param nfft: number of points for the Fourier Transform
-    :param lowfreq: lower limit of the frequency band filtered
-    :param maxfreq: higher limit of the frequency band filtered
-    :param nlinfilt: number of linear filters to use in low frequencies
-    :param  nlogfilt: number of log-linear filters to use in high frequencies
-    :param midfreq: frequency boundary between linear and log-linear filters
+    This function constructs a filterbank where each filter is defined by a triangle in the spectral domain.
+    The filters are spaced linearly in the low-frequency range and logarithmically in the high-frequency range,
+    based on the specified numbers of linear (nlinfilt) and log-linear (nlogfilt) filters. The filterbank is 
+    computed to map the FFT bins (derived from nfft points) into the Mel scale for robust feature extraction.
+    
+    Parameters:
+        fs (int): sampling frequency of the original signal.
+        nfft (int): number of points for the Fourier Transform.
+        lowfreq (float): lower frequency bound for the filterbank.
+        maxfreq (float): upper frequency bound for the filterbank.
+        nlinfilt (int): number of filters with linear spacing in the low frequencies.
+        nlogfilt (int): number of filters with logarithmic spacing in the high frequencies.
+        midfreq (float): frequency boundary between linear and log-linear filter spacing (default is 1000 Hz).
 
-    :return: the filter bank and the central frequencies of each filter
+    Returns:
+        fbank (numpy.ndarray): The computed filterbank matrix, where each row corresponds to a triangular filter
+                               applied in the FFT domain.
+        frequences (numpy.ndarray): The central frequencies of the triangular filters.
     """
     # Total number of filters
     nfilt = nlinfilt + nlogfilt
@@ -203,13 +215,23 @@ def power_spectrum(input_sig,
                    shift=0.01,
                    prefac=0.97):
     """
-    Compute the power spectrum of the signal.
-    :param input_sig:
-    :param fs:
-    :param win_time:
-    :param shift:
-    :param prefac:
-    :return:
+    Computes the power spectrum and log energy of an audio signal.
+
+    This function first frames the input signal using a Hanning window with specified window duration 
+    (win_time) and shift (in seconds). Pre-emphasis filtering is applied after framing for consistent stream processing.
+    The function then computes the FFT on each frame to obtain the power spectrum and calculates the log energy
+    for each frame.
+
+    Parameters:
+        input_sig (numpy.ndarray): the input audio signal.
+        fs (int): sampling frequency in Hz. Default is 8000 Hz.
+        win_time (float): duration of each frame in seconds (e.g., 0.025 for 25 ms).
+        shift (float): time shift between successive frames in seconds (e.g., 0.01 for 10 ms).
+        prefac (float): pre-emphasis coefficient applied to each frame.
+
+    Returns:
+        spec (numpy.ndarray): 2D array of power spectrum values for each frame.
+        log_energy (numpy.ndarray): 1D array of the log energy for each frame.
     """
     window_length = int(round(win_time * fs))
     overlap = window_length - int(shift * fs)
@@ -239,11 +261,20 @@ def power_spectrum(input_sig,
 
 def framing(sig, win_size, win_shift=1, context=(0, 0), pad='zeros'):
     """
-    :param sig: input signal, can be mono or multi dimensional
-    :param win_size: size of the window in term of samples
-    :param win_shift: shift of the sliding window in terme of samples
-    :param context: tuple of left and right context
-    :param pad: can be zeros or edge
+    Extracts overlapping frames from an input signal using efficient stride tricks.
+
+    Parameters:
+        sig (numpy.ndarray): the input signal, which can be mono or multi-dimensional.
+        win_size (int): the size of each frame in samples.
+        win_shift (int): the number of samples to shift the window for the next frame.
+        context (tuple): a tuple (left, right) specifying additional context samples to include with each frame.
+        pad (str): padding method to use when extending the signal ('zeros' for zero-padding or 'edge' to repeat edge values).
+
+    Returns:
+        numpy.ndarray: An array of overlapping frames extracted from the input signal.
+    
+    The function pads the signal based on the provided context, computes the appropriate shape and strides,
+    and then uses numpy's stride_tricks to create a view into the signal without copying data.
     """
     dsize = sig.dtype.itemsize
     if sig.ndim == 1:
@@ -264,9 +295,11 @@ def framing(sig, win_size, win_shift=1, context=(0, 0), pad='zeros'):
 
 
 def pre_emphasis(input_sig, pre):
-    """Pre-emphasis of an audio signal.
-    :param input_sig: the input vector of signal to pre emphasize
-    :param pre: value that defines the pre-emphasis filter. 
+    """
+    Applies a pre-emphasis filter to an audio signal.
+
+    This function boosts high-frequency components by subtracting a scaled version of the previous sample from the current sample.
+    The pre-emphasis coefficient 'pre' controls the amount of high-frequency amplification, which can improve feature extraction.
     """
     if input_sig.ndim == 1:
         return (input_sig - numpy.c_[input_sig[numpy.newaxis, :][..., :1],
@@ -285,41 +318,38 @@ def mfcc(input_sig,
          get_spec=False,
          get_mspec=False,
          prefac=0.97):
-    """Compute Mel Frequency Cepstral Coefficients.
+    """
+    Compute Mel Frequency Cepstral Coefficients (MFCCs) and related features from an audio signal.
 
-    :param input_sig: input signal from which the coefficients are computed.
-            Input audio is supposed to be RAW PCM 16bits
-    :param lowfreq: lower limit of the frequency band filtered. 
-            Default is 100Hz.
-    :param maxfreq: higher limit of the frequency band filtered.
-            Default is 8000Hz.
-    :param nlinfilt: number of linear filters to use in low frequencies.
-            Default is 0.
-    :param nlogfilt: number of log-linear filters to use in high frequencies.
-            Default is 24.
-    :param nwin: length of the sliding window in seconds
-            Default is 0.025.
-    :param fs: sampling frequency of the original signal. Default is 16000Hz.
-    :param nceps: number of cepstral coefficients to extract. 
-            Default is 13.
-    :param shift: shift between two analyses. Default is 0.01 (10ms).
-    :param get_spec: boolean, if true returns the spectrogram
-    :param get_mspec:  boolean, if true returns the output of the filter banks
-    :param prefac: pre-emphasis filter value
+    This function extracts MFCCs from a RAW PCM 16-bit audio signal by first computing the power spectrum through
+    windowing and pre-emphasis filtering, then filtering the spectrum with a triangular filterbank (based on the Mel scale).
+    The logarithm of the filterbank energies (mspec) is computed, and the Discrete Cosine Transform (DCT) is applied to 
+    obtain the MFCCs (excluding the C0 term, which represents overall energy). Optionally, the function can also return the 
+    full spectrogram and the log Mel-spectrum.
 
-    :return: the cepstral coefficients in a ndaray as well as 
-            the Log-spectrum in the mel-domain in a ndarray.
+    Parameters:
+        input_sig (numpy.ndarray): input audio signal (expected as RAW PCM 16-bit).
+        lowfreq (float): lower frequency bound for filtering (default 100 Hz).
+        maxfreq (float): upper frequency bound for filtering (default 8000 Hz).
+        nlinfilt (int): number of linearly spaced filters for low frequencies (default 0).
+        nlogfilt (int): number of logarithmically spaced filters for high frequencies (default 24).
+        nwin (float): window length in seconds for framing the signal (default 0.025 sec).
+        fs (int): sampling frequency of the input signal (default 16000 Hz).
+        nceps (int): number of cepstral coefficients to extract (default 13).
+        shift (float): time shift between successive frames in seconds (default 0.01 sec).
+        get_spec (bool): if True, include the power spectrogram in the output.
+        get_mspec (bool): if True, include the log Mel-spectrum in the output.
+        prefac (float): pre-emphasis coefficient applied to the signal (default 0.97).
 
-    .. note:: MFCC are computed as follows:
-        
-            - Pre-processing in time-domain (pre-emphasizing)
-            - Compute the spectrum amplitude by windowing with a Hamming window
-            - Filter the signal in the spectral domain with a triangular filter-bank, whose filters are approximately
-               linearly spaced on the mel scale, and have equal bandwidth in the mel scale
-            - Compute the DCT of the log-spectrom
-            - Log-energy is returned as first coefficient of the feature vector.
-    
-    For more details, refer to [Davis80]_.
+    Returns:
+        list: A list containing:
+              - MFCCs (numpy.ndarray): The computed cepstral coefficients (excluding the 0th coefficient).
+              - Log energy (numpy.ndarray): Logarithm of the frame energies.
+              - Spectrogram (numpy.ndarray or None): The power spectrum if get_spec is True, otherwise None.
+              - Log Mel-spectrum (numpy.ndarray or None): The log energies of the filterbank if get_mspec is True, otherwise None.
+
+    The MFCCs provide a compact representation of the spectral envelope of the audio signal, which is crucial for
+    tasks such as speaker verification, speech recognition, and other audio analysis applications.
     """
     # Compute power spectrum
     spec, log_energy = power_spectrum(input_sig,
