@@ -342,7 +342,7 @@ def mfcc(input_sig,
         prefac (float): pre-emphasis coefficient applied to the signal (default 0.97).
 
     Returns:
-        list: A list containing:
+        list: a list containing:
               - MFCCs (numpy.ndarray): the computed cepstral coefficients (excluding the 0th coefficient).
               - Log energy (numpy.ndarray): logarithm of the frame energies.
               - Spectrogram (numpy.ndarray or None): the power spectrum if get_spec is True, otherwise None.
