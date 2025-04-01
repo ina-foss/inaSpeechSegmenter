@@ -162,31 +162,39 @@ def _update_states(states, consecutive):
 
 def viterbi_decoding(emission, transition,
                      initial=None, consecutive=None, constraint=None):
-    """(Constrained) Viterbi decoding
-
-    Parameters
-    ----------
-    emission : array of shape (n_samples, n_states)
-        E[t, i] is the emission log-probabilities of sample t at state i.
-    transition : array of shape (n_states, n_states)
-        T[i, j] is the transition log-probabilities from state i to state j.
-    initial : optional, array of shape (n_states, )
-        I[i] is the initial log-probabilities of state i.
-        Defaults to equal log-probabilities.
-    consecutive : optional, int or int array of shape (n_states, )
-        C[i] is a the minimum-consecutive-states constraint for state i.
-        C[i] = 1 is equivalent to no constraint (default).
-    constraint : optional, array of shape (n_samples, n_states)
-        K[t, i] = 1 forbids state i at time t.
-        K[t, i] = 2 forces state i at time t.
-        Use K[t, i] = 0 for no constraint (default).
-
-    Returns
-    -------
-    states : array of shape (n_samples, )
-        Most probable state sequence
-
-    """
+      """
+      Constrained Viterbi Decoding
+  
+      This function computes the most probable sequence of hidden states given a series of observations,
+      using the Viterbi algorithm. It supports constraints to enforce minimum consecutive state durations 
+      and to restrict certain states at specific times (e.g., forbidding or forcing states).
+  
+      Parameters:
+          emission : numpy.ndarray, shape (n_samples, n_states)
+              The log-probabilities for each state at each observation (E[t, i] is the emission log-probability
+              of sample t for state i).
+          transition : numpy.ndarray, shape (n_states, n_states)
+              The log-probabilities of transitioning from one state to another (T[i, j] is the transition log-probability
+              from state i to state j).
+          initial : optional, numpy.ndarray, shape (n_states,)
+              The initial log-probabilities for each state. If not provided, a uniform distribution is assumed.
+          consecutive : optional, int or numpy.ndarray, shape (n_states,)
+              The minimum number of consecutive observations that each state must persist.
+              A value of 1 indicates no constraint. This is used to expand the state space to enforce duration constraints.
+          constraint : optional, numpy.ndarray, shape (n_samples, n_states)
+              A matrix specifying state constraints at each time step:
+                  - 0: no constraint,
+                  - 1: state is forbidden,
+                  - 2: state is forced.
+                  
+      Returns:
+          numpy.ndarray, shape (n_samples,)
+              The most probable sequence of states after applying the constrained Viterbi decoding.
+      
+      The function adjusts the emission, transition, initial, and constraint matrices by duplicating states to satisfy the
+      minimum consecutive constraints. It then performs a forward pass to compute the optimal path probabilities, followed by 
+      backtracking to recover the best state sequence, and finally maps the duplicated state indices back to the original states.
+      """
 
     # ~~ INITIALIZATION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
