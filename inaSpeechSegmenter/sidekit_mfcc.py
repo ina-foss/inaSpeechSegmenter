@@ -343,10 +343,10 @@ def mfcc(input_sig,
 
     Returns:
         list: A list containing:
-              - MFCCs (numpy.ndarray): The computed cepstral coefficients (excluding the 0th coefficient).
-              - Log energy (numpy.ndarray): Logarithm of the frame energies.
-              - Spectrogram (numpy.ndarray or None): The power spectrum if get_spec is True, otherwise None.
-              - Log Mel-spectrum (numpy.ndarray or None): The log energies of the filterbank if get_mspec is True, otherwise None.
+              - MFCCs (numpy.ndarray): the computed cepstral coefficients (excluding the 0th coefficient).
+              - Log energy (numpy.ndarray): logarithm of the frame energies.
+              - Spectrogram (numpy.ndarray or None): the power spectrum if get_spec is True, otherwise None.
+              - Log Mel-spectrum (numpy.ndarray or None): the log energies of the filterbank if get_mspec is True, otherwise None.
 
     The MFCCs provide a compact representation of the spectral envelope of the audio signal, which is crucial for
     tasks such as speaker verification, speech recognition, and other audio analysis applications.
