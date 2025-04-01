@@ -4,9 +4,7 @@
 Created on Tue Mar 27 15:18:49 2018
 
 @author: elechapt
-"""
 
-"""
 This module provides an extension to Python's threading capabilities by implementing a custom Thread class,
 ThreadReturning, that allows threads to return a value when they complete. By overriding the run and join 
 methods, ThreadReturning captures the result of the target function executed in the thread, making it easier 
