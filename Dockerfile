@@ -4,7 +4,7 @@
 
 
 
-FROM tensorflow/tensorflow:2.8.3-gpu-jupyter
+FROM tensorflow/tensorflow:latest-gpu
 
 MAINTAINER David Doukhan david.doukhan@gmail.com
 
