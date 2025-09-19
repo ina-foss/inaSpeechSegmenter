@@ -1,6 +1,6 @@
 # inaSpeechSegmenter
 [![Python](https://img.shields.io/pypi/pyversions/inaSpeechSegmenter.svg?style=plastic)](https://badge.fury.io/py/inaSpeechSegmenter)
-[![Python 3.7 to 3.12 unit tests](https://github.com/ina-foss/inaSpeechSegmenter/actions/workflows/python-package.yml/badge.svg)](https://github.com/ina-foss/inaSpeechSegmenter/actions/workflows/python-package.yml)
+[![Python 3.7 to 3.13 unit tests](https://github.com/ina-foss/inaSpeechSegmenter/actions/workflows/python-package.yml/badge.svg)](https://github.com/ina-foss/inaSpeechSegmenter/actions/workflows/python-package.yml)
 [![PyPI version](https://badge.fury.io/py/inaSpeechSegmenter.svg)](https://badge.fury.io/py/inaSpeechSegmenter)
 [![Docker Pulls](https://img.shields.io/docker/pulls/inafoss/inaspeechsegmenter)](https://hub.docker.com/r/inafoss/inaspeechsegmenter)
 
@@ -25,7 +25,7 @@ Singing voice is tagged as music.
 
 ## Installation
 
-inaSpeechSegmenter works with Python 3.7 to Python 3.12. It is based on Tensorflow which does not yet support Python 3.13+.
+inaSpeechSegmenter works with Python 3.7 to Python 3.13. It is based on Tensorflow which does not yet support Python 3.14+.
 
 It is available on Python Package Index [inaSpeechSegmenter](https://pypi.org/project/inaSpeechSegmenter/) and packaged as a docker image [inafoss/inaspeechsegmenter](https://hub.docker.com/r/inafoss/inaspeechsegmenter).
 
@@ -41,7 +41,7 @@ $ sudo apt-get install ffmpeg
 ### PIP installation
 ```bash
 # create a python 3 virtual environment and activate it
-$ virtualenv -p python3 env
+$ python -m venv env
 $ source env/bin/activate
 # install framework and dependencies
 $ pip install inaSpeechSegmenter
@@ -53,7 +53,7 @@ $ pip install inaSpeechSegmenter
 # clone git repository
 $ git clone https://github.com/ina-foss/inaSpeechSegmenter.git
 # create a python 3 virtual environment and activate it
-$ virtualenv -p python3 env
+$ python -m venv env
 $ source env/bin/activate
 # install framework and dependencies
 # you should use pip instead of setup.py for installing from source
