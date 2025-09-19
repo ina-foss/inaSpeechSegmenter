@@ -144,7 +144,7 @@ class VoiceFemininityScoring:
         # Add vectors with vad-overlap if too many predictions have been removed
         return add_needed_vectors(n_xvectors, midpoint_seg)
 
-    def __call__(self, fpath, tmpdir=None):
+    def __call__(self, fpath):
         """
         Return Voice Femininity Score of a given file with values before last sigmoid activation :
                 * convert file to wav 16k mono with ffmpeg
@@ -154,10 +154,10 @@ class VoiceFemininityScoring:
                 * apply gender detection model and compute femininity score
                 * return score, duration of detected speech and number of retained x-vectors
         """
-        basename, ext = os.path.splitext(os.path.basename(fpath))[0], os.path.splitext(os.path.basename(fpath))[1]
+        basename, _ = os.path.splitext(os.path.basename(fpath))[0], os.path.splitext(os.path.basename(fpath))[1]
 
         # Read "wav" file
-        signal = media2sig16kmono(fpath, tmpdir, dtype="float64")
+        signal = media2sig16kmono(fpath, dtype="float64")
         duration = len(signal) / SR
 
         # Applying voice activity detection
@@ -230,7 +230,7 @@ class VBxExtractor(ABC):
                 seg_end = round(start / 100.0 + WINLEN / 100.0, 3)
                 xvectors.append((key, (seg_start, seg_end), xvector))
 
-        #  Last segment
+        #  Last segment
         if len(fea) - start - STEP >= 10:
             data = fea[start + STEP:len(fea)]
             xvector = self.get_embedding(data)

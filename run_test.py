@@ -55,7 +55,7 @@ class TestInaSpeechSegmenter(unittest.TestCase):
     def test_silence_features(self):
         # test empty signal do not result in warnings
         with warnings.catch_warnings(record=True) as w:
-            _media2feats('./media/silence2sec.wav', None, None, None, 'ffmpeg')
+            _media2feats('./media/silence2sec.wav', None, None, 'ffmpeg')
             assert len(w) == 0, [str(e) for e in w]
 
         

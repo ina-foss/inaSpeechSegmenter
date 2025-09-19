@@ -50,8 +50,8 @@ import warnings
 
 from .export_funcs import seg2csv, seg2textgrid
 
-def _media2feats(medianame, tmpdir, start_sec, stop_sec, ffmpeg):
-    sig = media2sig16kmono(medianame, tmpdir, start_sec, stop_sec, ffmpeg, 'float32')
+def _media2feats(medianame, start_sec, stop_sec, ffmpeg):
+    sig = media2sig16kmono(medianame, start_sec, stop_sec, ffmpeg, 'float32')
     with warnings.catch_warnings():
         # ignore warnings resulting from empty signals parts
         warnings.filterwarnings('ignore', message='divide by zero encountered in log', category=RuntimeWarning)
@@ -276,27 +276,25 @@ class Segmenter:
         return [(lab, start_sec + start * .02, start_sec + stop * .02) for lab, start, stop in lseg]
 
 
-    def __call__(self, medianame, tmpdir=None, start_sec=None, stop_sec=None):
+    def __call__(self, medianame, start_sec=None, stop_sec=None):
         """
         Return segmentation of a given file
                 * convert file to wav 16k mono with ffmpeg
                 * call NN segmentation procedures
         * media_name: path to the media to be processed (including remote url)
                 may include any format supported by ffmpeg
-        * tmpdir: allow to define a custom path for storing temporary files
-                fast read/write HD are a good choice
         * start_sec (seconds): sound stream before start_sec won't be processed
         * stop_sec (seconds): sound stream after stop_sec won't be processed
         """
         
-        mspec, loge, difflen = _media2feats(medianame, tmpdir, start_sec, stop_sec, self.ffmpeg)
+        mspec, loge, difflen = _media2feats(medianame, start_sec, stop_sec, self.ffmpeg)
         if start_sec is None:
             start_sec = 0
         # do segmentation   
         return self.segment_feats(mspec, loge, difflen, start_sec)
 
     
-    def batch_process(self, linput, loutput, tmpdir=None, verbose=False, skipifexist=False, nbtry=1, trydelay=2., output_format='csv'):
+    def batch_process(self, linput, loutput, verbose=False, skipifexist=False, nbtry=1, trydelay=2., output_format='csv'):
         
         if verbose:
             print('batch_processing %d files' % len(linput))
@@ -311,7 +309,7 @@ class Segmenter:
         t_batch_start = time.time()
         
         lmsg = []
-        fg = featGenerator(linput.copy(), loutput.copy(), tmpdir, self.ffmpeg, skipifexist, nbtry, trydelay)
+        fg = featGenerator(linput.copy(), loutput.copy(), self.ffmpeg, skipifexist, nbtry, trydelay)
         i = 0
         for feats, msg in fg:
             lmsg += msg
@@ -337,7 +335,7 @@ class Segmenter:
         return t_batch_dur, nb_processed, avg, lmsg
 
 
-def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
+def medialist2feats(lin, lout, ffmpeg, skipifexist, nbtry, trydelay):
     """
     To be used when processing batches
     if resulting file exists, it is skipped
@@ -362,7 +360,7 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
         itry = 0
         while ret is None and itry < nbtry:
             try:
-                ret = _media2feats(src, tmpdir, None, None, ffmpeg)
+                ret = _media2feats(src, None, None, ffmpeg)
             except:
                 itry += 1
                 errmsg = sys.exc_info()[0]
@@ -376,14 +374,14 @@ def medialist2feats(lin, lout, tmpdir, ffmpeg, skipifexist, nbtry, trydelay):
     return ret, msg
 
     
-def featGenerator(ilist, olist, tmpdir=None, ffmpeg='ffmpeg', skipifexist=False, nbtry=1, trydelay=2.):
-    thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay])
+def featGenerator(ilist, olist, ffmpeg='ffmpeg', skipifexist=False, nbtry=1, trydelay=2.):
+    thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, ffmpeg, skipifexist, nbtry, trydelay])
     thread.start()
     while True:
         ret, msg = thread.join()
         if len(ilist) == 0:
             break
-        thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, tmpdir, ffmpeg, skipifexist, nbtry, trydelay])
+        thread = ThreadReturning(target = medialist2feats, args=[ilist, olist, ffmpeg, skipifexist, nbtry, trydelay])
         thread.start()
         yield ret, msg
     yield ret, msg

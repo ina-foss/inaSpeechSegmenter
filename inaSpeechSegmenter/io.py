@@ -24,12 +24,12 @@
 # THE SOFTWARE.
 
 import os
-import tempfile
-from subprocess import Popen, PIPE
+from tempfile import TemporaryFile
+import subprocess
 import soundfile as sf
 
 
-def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmpeg='ffmpeg', dtype='float64'):
+def media2sig16kmono(medianame, start_sec=None, stop_sec=None, ffmpeg='ffmpeg', dtype='float64'):
     """
     Convert media to temp wav 16k mono and return signal
     """
@@ -56,26 +56,24 @@ def media2sig16kmono(medianame, tmpdir=None, start_sec=None, stop_sec=None, ffmp
 
     base, _ = os.path.splitext(os.path.basename(medianame))
 
-    with tempfile.TemporaryDirectory(dir=tmpdir) as tmpdirname:
-        # build ffmpeg command line
-        tmpwav = tmpdirname + '/' + base + '.wav'
-        args = [ffmpeg, '-y', '-i', medianame, '-ar', '16000', '-ac', '1']
-        if start_sec is None:
-            start_sec = 0
-        else:
-            args += ['-ss', '%f' % start_sec]
 
-        if stop_sec is not None:
-            args += ['-to', '%f' % stop_sec]
-        args += [tmpwav]
+    # build ffmpeg command
+    cmd = [ffmpeg, '-i', medianame, '-f', 'wav', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1']
+    if start_sec is None:
+        start_sec = 0
+    else:
+        cmd += ['-ss', '%f' % start_sec]
+    if stop_sec is not None:
+        cmd += ['-to', '%f' % stop_sec]
+    cmd += ['pipe:1']
 
-        # launch ffmpeg
-        p = Popen(args, stdout=PIPE, stderr=PIPE)
-        output, error = p.communicate()
-        assert p.returncode == 0, error
-
-        # Get Mel Power Spectrogram and Energy
-        sig, sr = sf.read(tmpwav, dtype=dtype)
-        assert sr == 16000
-        return sig
-
+    with TemporaryFile() as out, TemporaryFile() as err:
+        ret = subprocess.run(cmd, stdout=out, stderr=err)
+        if ret.returncode != 0:
+            err.seek(0)
+            msg = err.read()
+            raise Exception(msg)
+        out.seek(0)
+        wav_data, fs = sf.read(out, dtype=dtype)
+    assert(fs == 16000)
+    return wav_data

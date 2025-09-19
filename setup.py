@@ -92,6 +92,22 @@ inaSpeechSegmenter has been presented at the IEEE International Conference on Ac
 }
 ```
 
+inaSpeechSegmenter was ranked #1 6 open-source VAD system on a French TV and
+radio benchmark : LIUM_SpkDiarization, Pyannote, Rvad, Silero, Speechbrain
+```bibtex
+@inproceedings{doukhan-etal-2024-inagvad,
+    title = "{I}na{GVAD} : A Challenging {F}rench {TV} and Radio Corpus Annotated for Speech Activity Detection and Speaker Gender Segmentation",
+    author = "Doukhan, David  and Maertens, Christine  and Le Personnic, William  and Speroni, Ludovic  and Dehak, Reda",
+    booktitle = "Proceedings of the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024)",
+    month = may,
+    year = "2024",
+    address = "Torino, Italia",
+    publisher = "ELRA and ICCL",
+    url = "https://aclanthology.org/2024.lrec-main.785/",
+    pages = "8963--8974",
+}
+```
+
 inaSpeechSegmenter won MIREX 2018 speech detection challenge.  
 http://www.music-ir.org/mirex/wiki/2018:Music_and_or_Speech_Detection_Results  
 Details on the speech detection submodule can be found bellow:  
