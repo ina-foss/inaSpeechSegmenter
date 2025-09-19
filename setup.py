@@ -92,7 +92,7 @@ inaSpeechSegmenter has been presented at the IEEE International Conference on Ac
 }
 ```
 
-inaSpeechSegmenter was ranked #1 6 open-source VAD system on a French TV and
+inaSpeechSegmenter was ranked #1 against 6 open-source VAD system on a French TV and
 radio benchmark : LIUM_SpkDiarization, Pyannote, Rvad, Silero, Speechbrain
 ```bibtex
 @inproceedings{doukhan-etal-2024-inagvad,
