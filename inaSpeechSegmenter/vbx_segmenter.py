@@ -5,7 +5,8 @@ import onnxruntime as ort
 import logging
 #import torch.backends
 
-import keras
+import torch
+# import keras
 from pyannote.core import Segment, Annotation, Timeline
 
 # from .resnet import ResNet101
@@ -13,6 +14,7 @@ from .features_vbx import povey_window, mel_fbank_mx, add_dither, fbank_htk, cmv
 from .segmenter import Segmenter
 from .io import media2sig16kmono
 from .remote_utils import get_remote
+from .pytorch_models import Interspeech2023All, Interspeech2023Cvfr
 
 #torch.backends.cudnn.enabled = True
 logger = logging.getLogger(__name__)
@@ -113,15 +115,25 @@ class VoiceFemininityScoring:
         # TODO : tell which (bad) model was provided !
         assert gd_model_criteria in ["bgc", "vfp"], "Gender detection model Criteria must be 'bgc' (default) or 'vfp'"
         gd_model = None
+        model_cls = None
         if gd_model_criteria == "bgc":
-            gd_model = "interspeech2023_all.hdf5"
+            gd_model = "interspeech2023_all.pth"
+            model_cls = Interspeech2023All
             self.vad_thresh = 0.7
         elif gd_model_criteria == "vfp":
-            gd_model = "interspeech2023_cvfr.hdf5"
+            gd_model = "interspeech2023_cvfr.pth"
+            model_cls = Interspeech2023Cvfr
             self.vad_thresh = 0.62
-        self.gender_detection_mlp_model = keras.models.load_model(
-            get_remote(gd_model),
-            compile=False)
+            
+        self.gender_detection_mlp_model = model_cls()
+        model_path = get_remote(gd_model)
+        # Use weights_only=True if available
+        try:
+             self.gender_detection_mlp_model.load_state_dict(torch.load(model_path, weights_only=True))
+        except TypeError:
+             self.gender_detection_mlp_model.load_state_dict(torch.load(model_path))
+             
+        self.gender_detection_mlp_model.eval()
 
         # Voice activity detection model
         self.vad = Segmenter(vad_engine='smn', detect_gender=False)
@@ -186,7 +198,11 @@ class VoiceFemininityScoring:
 
             # Applying gender detection (pretrained Multi layer perceptron)
             x = np.asarray([x for _, _, x in x_vectors])
-            gender_pred = self.gender_detection_mlp_model.predict(x, verbose=0)
+            
+            with torch.no_grad():
+                x_torch = torch.from_numpy(x).float()
+                gender_pred = self.gender_detection_mlp_model(x_torch).cpu().numpy()
+                
             if len(gender_pred) > 1:
                 gender_pred = np.squeeze(gender_pred)
 

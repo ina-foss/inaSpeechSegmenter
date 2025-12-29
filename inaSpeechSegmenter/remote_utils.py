@@ -1,17 +1,24 @@
 import os
 from keras.utils import get_file
 
-ISS_url = 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/models/'
-VFS_url = 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/interspeech23/'
+ISS_url = 'https://huggingface.co/0xrushi/inaSpeechSegmenter-torch/resolve/main/'
+VFS_url = 'https://huggingface.co/0xrushi/inaSpeechSegmenter-torch/resolve/main/'
+OLD_ISS_url = 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/models/'
+OLD_VFS_url = 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/interspeech23/'
 
 dmodels = {
-    'keras_speech_music_cnn.hdf5': ISS_url,
-    'keras_speech_music_noise_cnn.hdf5': ISS_url,
-    'keras_male_female_cnn.hdf5': ISS_url,
-    'interspeech2023_all.hdf5': VFS_url,
-    'interspeech2023_cvfr.hdf5': VFS_url,
-    'final.onnx': VFS_url,
-    'raw_81.pth': VFS_url,
+    'keras_speech_music_cnn.pth': ISS_url,
+    'keras_speech_music_noise_cnn.pth': ISS_url,
+    'keras_male_female_cnn.pth': ISS_url,
+    'interspeech2023_all.pth': VFS_url,
+    'interspeech2023_cvfr.pth': VFS_url,
+    'keras_speech_music_cnn.hdf5': OLD_ISS_url,
+    'keras_speech_music_noise_cnn.hdf5': OLD_ISS_url,
+    'keras_male_female_cnn.hdf5': OLD_ISS_url,
+    'interspeech2023_all.hdf5': OLD_VFS_url,
+    'interspeech2023_cvfr.hdf5': OLD_VFS_url,
+    'final.onnx': 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/interspeech23/',
+    'raw_81.pth': 'https://github.com/ina-foss/inaSpeechSegmenter/releases/download/interspeech23/',
 }
 
 

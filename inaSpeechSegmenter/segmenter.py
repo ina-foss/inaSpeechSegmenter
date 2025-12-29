@@ -28,8 +28,7 @@ import os
 import sys
 
 import numpy as np
-from tensorflow import keras
-from tensorflow.keras.utils import get_file
+import torch
 from .thread_returning import ThreadReturning
 
 import shutil
@@ -49,6 +48,7 @@ from .sidekit_mfcc import mfcc
 import warnings
 
 from .export_funcs import seg2csv, seg2textgrid
+from .pytorch_models import SpeechMusicCNN, SpeechMusicNoiseCNN, MaleFemaleCNN
 
 def _media2feats(medianame, start_sec, stop_sec, ffmpeg):
     sig = media2sig16kmono(medianame, start_sec, stop_sec, ffmpeg, 'float32')
@@ -111,25 +111,35 @@ def _binidx2seglist(binidx):
 class DnnSegmenter:
     """
     DnnSegmenter is an abstract class allowing to perform Dnn-based
-    segmentation using Keras serialized models using 24 mel spectrogram
+    segmentation using PyTorch serialized models using 24 mel spectrogram
     features obtained with SIDEKIT framework.
 
     Child classes MUST define the following class attributes:
     * nmel: the number of mel bands to used (max: 24)
     * viterbi_arg: the argument to be used with viterbi post-processing
-    * model_fname: the filename of the serialized keras model to be used
+    * model_fname: the filename of the serialized pytorch model to be used
         the model should be stored in the current directory
     * inlabel: only segments with label name inlabel will be analyzed.
         other labels will stay unchanged
     * outlabels: the labels associated the output of neural network models
     """
-    def __init__(self, batch_size):
+    def __init__(self, batch_size, model_cls=None):
         # load the DNN model
+        if model_cls is None:
+             raise ValueError("model_cls must be provided for PyTorch models")
 
         model_path = get_remote(self.model_fname)
-
-        self.nn = keras.models.load_model(model_path, compile=False)
-        self.nn.run_eagerly = False
+        
+        # Load PyTorch model
+        self.nn = model_cls()
+        # Use weights_only=True for safety if available, otherwise fallback
+        try:
+            self.nn.load_state_dict(torch.load(model_path, weights_only=True))
+        except TypeError:
+             # Fallback for older torch versions < 3.6
+             self.nn.load_state_dict(torch.load(model_path))
+             
+        self.nn.eval()
         self.batch_size = batch_size
 
     def __call__(self, mspec, lseg, difflen = 0):
@@ -158,22 +168,41 @@ class DnnSegmenter:
             if lab == self.inlabel:
                 batch.append(patches[start:stop, :])
 
+        rawpred = None
         if len(batch) > 0:
-            batch = np.expand_dims(np.concatenate(batch), 3)
-            rawpred = self.nn.predict(batch, batch_size=self.batch_size, verbose=2)
+            # Keras logic was: np.expand_dims(np.concatenate(batch), 3) -> (Batch, H, W, 1)
+            # PyTorch logic: (Batch, 1, H, W)
+            batch_np = np.concatenate(batch)
+            batch_torch = torch.from_numpy(batch_np).unsqueeze(1).float()
+            
+            # Inference in batches
+            preds_list = []
+            with torch.no_grad():
+                for i in range(0, len(batch_torch), self.batch_size):
+                    b = batch_torch[i:i+self.batch_size]
+                    p = self.nn(b)
+                    preds_list.append(p.cpu().numpy())
+            rawpred = np.concatenate(preds_list)
+            
         gc.collect()
             
         ret = []
+        pred_idx = 0
         for lab, start, stop in lseg:
             if lab != self.inlabel:
                 ret.append((lab, start, stop))
                 continue
 
             l = stop - start
-            r = rawpred[:l] 
-            rawpred = rawpred[l:]
-            r[finite[start:stop] == False, :] = 0.5
-            pred = viterbi_decoding(np.log(r), diag_trans_exp(self.viterbi_arg, len(self.outlabels)))
+            r = rawpred[pred_idx : pred_idx+l] 
+            pred_idx += l
+            
+            # r[finite[start:stop] == False, :] = 0.5 
+            # Logic update for PyTorch/General case: uniform probability for non-finite frames
+            r[finite[start:stop] == False, :] = 1.0 / len(self.outlabels)
+            
+            # Add small epsilon to log to avoid log(0)
+            pred = viterbi_decoding(np.log(r + 1e-10), diag_trans_exp(self.viterbi_arg, len(self.outlabels)))
             for lab2, start2, stop2 in _binidx2seglist(pred):
                 ret.append((self.outlabels[int(lab2)], start2+start, stop2+start))            
         return ret
@@ -182,26 +211,32 @@ class DnnSegmenter:
 class SpeechMusic(DnnSegmenter):
     # Voice activity detection: requires energetic activity detection
     outlabels = ('speech', 'music')
-    model_fname = 'keras_speech_music_cnn.hdf5'
+    model_fname = 'keras_speech_music_cnn.pth'
     inlabel = 'energy'
     nmel = 21
     viterbi_arg = 150
+    def __init__(self, batch_size):
+        super(SpeechMusic, self).__init__(batch_size, model_cls=SpeechMusicCNN)
 
 class SpeechMusicNoise(DnnSegmenter):
     # Voice activity detection: requires energetic activity detection
     outlabels = ('speech', 'music', 'noise')
-    model_fname = 'keras_speech_music_noise_cnn.hdf5'
+    model_fname = 'keras_speech_music_noise_cnn.pth'
     inlabel = 'energy'
     nmel = 21
     viterbi_arg = 80
+    def __init__(self, batch_size):
+        super(SpeechMusicNoise, self).__init__(batch_size, model_cls=SpeechMusicNoiseCNN)
     
 class Gender(DnnSegmenter):
     # Gender Segmentation, requires voice activity detection
     outlabels = ('female', 'male')
-    model_fname = 'keras_male_female_cnn.hdf5'
+    model_fname = 'keras_male_female_cnn.pth'
     inlabel = 'speech'
     nmel = 24
     viterbi_arg = 80
+    def __init__(self, batch_size):
+        super(Gender, self).__init__(batch_size, model_cls=MaleFemaleCNN)
 
 
 class Segmenter:
