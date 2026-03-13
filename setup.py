@@ -123,18 +123,18 @@ Details on the speech detection submodule can be found bellow:
 ```
 '''
 
-platform_dependent_packages = []
+# platform_dependent_packages = []
 
-if sys.platform == 'darwin':
-  platform_dependent_packages.append('tensorflow')
+# if sys.platform == 'darwin':
+#   platform_dependent_packages.append('tensorflow')
 
-  if platform.machine() == 'arm64':
-    platform_dependent_packages.append('onnxruntime-silicon')
-  else:
-    platform_dependent_packages.append('onnxruntime')
-else:
-  platform_dependent_packages.append('tensorflow[and-cuda]')
-  platform_dependent_packages.append('onnxruntime-gpu')
+#   if platform.machine() == 'arm64':
+#     platform_dependent_packages.append('onnxruntime-silicon')
+#   else:
+#     platform_dependent_packages.append('onnxruntime')
+# else:
+#   platform_dependent_packages.append('tensorflow[and-cuda]')
+#   platform_dependent_packages.append('onnxruntime-gpu')
 
 requirements = [
   'numpy',
@@ -145,7 +145,9 @@ requirements = [
   'Pyro4',
   'pytextgrid',
   'soundfile',
-  *platform_dependent_packages,
+  'onnxruntime',
+  'tensorflow',
+  # *platform_dependent_packages,
   #'torch',
 ]
 
