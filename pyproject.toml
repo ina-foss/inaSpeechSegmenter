@@ -1,0 +1,26 @@
+[project]
+name = "inaspeechsegmenter"
+version = "0.8.1"
+description = ""
+authors = [
+    {name = "Marton Mihaltz",email = "marton.mihaltz@meltwater.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy (>=2.4.3,<3.0.0)",
+    "pandas (>=3.0.1,<4.0.0)",
+    "scikit-image (>=0.26.0,<0.27.0)",
+    "pyannote-core (>=6.0.1,<7.0.0)",
+    "matplotlib (>=3.10.8,<4.0.0)",
+    "pyro4 (>=4.82,<5.0)",
+    "pytextgrid (>=0.1.4,<0.2.0)",
+    "soundfile (>=0.13.1,<0.14.0)",
+    "tensorflow (>=2.21.0,<3.0.0)",
+    "onnxruntime (>=1.24.3,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
